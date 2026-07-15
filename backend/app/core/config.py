@@ -59,9 +59,18 @@ class Settings(BaseSettings):
     def cors_origin_list(self) -> List[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
-    # ---------- 外部数据源 ----------
+    # ---------- 外部数据源：Sorftime ----------
+    # Standard API / CLI 共用 Account-SK
+    sorftime_api_sk: str = ""
+    sorftime_api_base_url: str = "https://standardapi.sorftime.com/api"
+    # MCP 专用 Account-SK（AI 日报）
+    sorftime_mcp_sk: str = ""
+    sorftime_mcp_url: str = "https://mcp.sorftime.com"
+    # 兼容旧字段
     sorftime_api_key: str = ""
-    sorftime_base_url: str = "https://api.sorftime.com"
+
+    # ---------- 1688 比价 ----------
+    # 通过 Sorftime ProductSearchFromName (domain=601) 实现，复用 sorftime_api_sk
     ali1688_app_key: str = ""
     ali1688_app_secret: str = ""
 

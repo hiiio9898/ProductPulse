@@ -124,3 +124,45 @@
 - 高消耗接口（`similar_product_feature`、`product_reviews` 各消耗 5）必须强缓存，优先复用。
 - `product_customers_say` 的站点字段名为 `site`，与其余接口的 `amzSite` 不同，适配层需统一映射。
 - 所有调用走 `adapters/sorftime.py`，统一重试（tenacity 指数退避）/超时/降级（失败用昨日快照）。
+## A.5 重大更新（2026-07-15）：三套接入方式 + 1688 依赖消除
+
+### 三套接入方式
+
+| 方式 | 凭据 | 端点 | 用途 |
+|------|------|------|------|
+| **Standard API** | API/CLI Account-SK | `standardapi.sorftime.com/api/<Endpoint>` | 正式后端集成（本系统主用） |
+| **CLI** | 同 API Account-SK | `sorftime api <Endpoint>` | 选品逻辑快速测试、批量获取 |
+| **MCP** | MCP 专用 Account-SK（与 API/CLI 不同） | `mcp.sorftime.com`（streamableHttp） | AI 日报时让 GLM 直连 Sorftime |
+
+### Standard API 技术规格（正式后端使用）
+
+- **认证**：`Authorization: BasicAuth <Account-SK>`
+- **接口名**：PascalCase（如 `ProductRequest`、`ProductSearch`）
+- **站点**：数字 domain（Amazon 1-14，1688 为 601），通过 URL `?domain=N` 传递
+- **请求**：HTTP POST，参数 JSON Body
+- **返回**：`{Code, Message, Data, RequestLeft, RequestConsumed}`，**字段 PascalCase**，`Code=0` 为成功
+- **限流**：单 profile QPM ≤ 200
+
+### API 接口名对照（Standard API vs MCP 文档）
+
+| 功能 | Standard API（正式用） | MCP 文档名 |
+|------|----------------------|-----------|
+| 产品详情 | `ProductRequest` | product_detail |
+| 产品搜索 | `ProductSearch` | product_search |
+| 子体销量 | `AsinSalesVolume` | — |
+| 子体变化 | `ProductVariationHistory` | product_variations |
+| 评论采集 | `ProductReviewsCollection` | — |
+| 评论查询 | `ProductReviewsQuery` | product_reviews |
+| 1688 比价 | `ProductSearchFromName` (domain=601) | — |
+
+### 1688 比价依赖消除
+
+**原排期**：Phase 0 需注册 1688 开放平台 + 企业实名认证（关键路径，审核 1-3 天）。
+
+**实际**：Sorftime 已内置 1688 采购货源查询（`ProductSearchFromName`，domain=601），复用 Sorftime API SK 即可比价。**无需单独注册 1688 开放平台，无需企业认证**。Phase 2 比价模块的关键路径阻塞已消除。
+
+### 真实验证结果（2026-07-15）
+
+- `ProductRequest`（消耗 1）✅ 真实返回 iRobot 产品详情
+- `ProductSearchFromName` domain=601（消耗 1）✅ 真实返回 100 条 1688 货源
+- 账号剩余 RequestLeft: 47

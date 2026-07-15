@@ -49,8 +49,8 @@
 
 ### 0.5 三方 API 接入准备（用户侧 + 脚本）
 > 用户侧动作（需提醒用户，外部审核有等待期）：
-- [ ] 注册 1688 开放平台并完成企业实名认证
-- [ ] 获取 Sorftime API Key
+- [x] ~~注册 1688 开放平台并完成企业实名认证~~ → 已消除：Sorftime 内置 1688 查询(domain=601)
+- [x] 获取 Sorftime API Key（API/CLI SK + MCP SK 已写入 .env）
 - [ ] 获取智谱 GLM API Key
 
 > 开发侧动作：
@@ -156,6 +156,6 @@
 - [x] 实现 `schemas/sorftime.py`（13 接口入参/出参类型）
 - [x] 实现 `adapters/sorftime.py`（13 接口 + 重试/超时/缓存/容错解析/字段映射）
 - [x] 编写适配层单元测试（mock，覆盖解析与字段差异）
-- [~] 真实连通性验证（待 SORFTIME_API_KEY 到位 + Python 环境就绪）
+- [x] 真实连通性验证通过（ProductRequest + 1688 ProductSearchFromName 真实数据）
 - [ ] 选品算法引擎对齐 Sorftime 真实字段（Phase 1，product_search/potential_product）
 - [ ] 每日拉取任务改用 product_search（Phase 1 tasks/sync_sorftime.py）
