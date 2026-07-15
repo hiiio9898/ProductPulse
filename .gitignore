@@ -69,3 +69,6 @@ backend_*.sqlite3
 # ===== OS / Misc =====
 *.bak
 *.tmp
+# 用户临时粘贴文件
+pasted-text.txt
+
