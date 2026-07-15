@@ -1,0 +1,148 @@
+# ProductPulse 开发执行 TODO
+
+> 基于 `Handoff/Handoff.md` 的「下一步计划」与 `项目开发文档/10.项目排期与里程碑.md` 制定。
+> 规则：完成一个任务，勾选一个（`[ ]` → `[x]`），逐步消除。
+> 最后更新：2026-07-15
+
+---
+
+## 进度总览
+
+- [ ] Phase 0：环境与版本控制准备（W1）
+- [ ] Phase 1：核心功能开发（W2-W3）
+- [ ] Phase 2：比价模块开发（W4）
+- [ ] Phase 3：AI 模块开发（W5）
+- [ ] Phase 4：测试与修复（W6）
+- [ ] Phase 5：部署上线（W6 末）
+
+---
+
+## Phase 0：环境与版本控制准备（W1）
+
+### 0.1 版本控制（先做，立即可执行）
+- [ ] `git init`，配置 `.gitignore`（Python / Node / IDE / .env）
+- [ ] 编写根目录 `README.md`（项目简介、技术栈、目录、启动指引）
+- [ ] 创建 `.env.example`（列出全部环境变量占位）
+- [ ] 首次提交：`chore: 初始化仓库与文档基线`
+
+### 0.2 后端项目骨架
+- [ ] 创建 `backend/` 目录结构（按 7.1：app/core, api/v1, models, schemas, services, adapters, tasks, utils；alembic/, tests/, scripts/）
+- [ ] `requirements.txt`（FastAPI, SQLAlchemy, Alembic, Celery, Redis, psycopg2-binary, httpx, pydantic-settings, pytest 等）
+- [ ] `app/main.py` FastAPI 入口 + 健康检查 `/health`
+- [ ] `app/core/config.py` 配置管理（pydantic-settings 读取 .env）
+- [ ] 统一响应体 + `BizError` 异常处理（7.2）
+- [ ] 结构化 JSON 日志 + trace_id 注入（7.9）
+- [ ] 本地能 `uvicorn app.main:app --reload` 启动成功
+
+### 0.3 前端项目骨架
+- [ ] `npm create vite@latest frontend -- --template react-ts`（React 18 + TS）
+- [ ] 接入 Ant Design 5 + React Router
+- [ ] 按 7.1 建 `src/` 目录（api/components/pages/hooks/store/utils）
+- [ ] axios 封装 + 全局响应拦截器（4xx/5xx → message.error，401 跳登录）
+- [ ] 布局骨架（Sider + Header + Content，对应 6.UI&UX 规范）
+- [ ] `npm run dev` 能启动并访问 `/health`
+
+### 0.4 本地基础设施（Docker Compose）
+- [ ] `docker-compose.yml`：PostgreSQL 15 + Redis 7
+- [ ] 数据卷持久化、healthcheck
+- [ ] 能 `docker compose up -d` 起依赖服务
+
+### 0.5 三方 API 接入准备（用户侧 + 脚本）
+> 用户侧动作（需提醒用户，外部审核有等待期）：
+- [ ] 注册 1688 开放平台并完成企业实名认证
+- [ ] 获取 Sorftime API Key
+- [ ] 获取智谱 GLM API Key
+
+> 开发侧动作：
+- [ ] `backend/scripts/test_sorftime.py` 调通基础接口（含 mock fallback）
+- [ ] `backend/scripts/test_1688.py` 调通基础接口
+- [ ] `backend/scripts/test_glm.py` 调通基础接口
+- [ ] **里程碑：测试脚本全部通过（Phase 0 准出）**
+
+---
+
+## Phase 1：核心功能开发（W2-W3）
+
+### 1.1 数据库
+- [ ] 按文档 4 创建 8 张表的 SQLAlchemy 模型（products, price_snapshots, sorftime_data, products_1688, product_metrics_daily, risk_rules, ai_reports, operation_logs）
+- [ ] Alembic 初始化 + 首个迁移脚本（含 pg_trgm 扩展、索引、软删除字段）
+- [ ] `alembic upgrade head` 跑通
+
+### 1.2 选品算法引擎
+- [ ] `services/selection.py`：阈值过滤（FR-01 的月销/评分/价格/增长率阈值）
+- [ ] 评分模型（多维加权打分）
+- [ ] 单元测试覆盖（≥80%，含边界值）
+
+### 1.3 风险规则引擎
+- [ ] `services/risk_engine.py`：规则匹配（FR-02 风险规则库）
+- [ ] 触发风险标签与预警
+- [ ] 单元测试覆盖
+
+### 1.4 Sorftime 定时任务
+- [ ] `tasks/sync_sorftime.py`：每日数据拉取（按 SRS 调度时间）
+- [ ] `adapters/sorftime.py`：含重试/超时/断路器/降级/幂等
+- [ ] Celery Beat 调度配置
+
+### 1.5 核心 API
+- [ ] `api/v1/dashboard.py`：看板首页概览聚合
+- [ ] `api/v1/products.py`：选品中心列表+筛选+排序+分页
+- [ ] `api/v1/config.py`：阈值/规则 CRUD
+- [ ] `api/v1/health.py`：健康检查
+- [ ] 全部带鉴权（Bearer Token）+ 限流 + 幂等
+
+### 1.6 前端核心页面
+- [ ] 首页看板（图表 + 关键指标卡）
+- [ ] 选品中心（列表 + 筛选 + 排序 + 详情抽屉）
+- [ ] 配置中心（阈值配置表单 + 风险规则管理）
+- [ ] 页面 5 态规范（加载/空/错误/无权限/成功）
+
+### 1.7 Phase 1 联调
+- [ ] 前后端联调选品→看板→配置全流程
+- [ ] **里程碑：选品算法 + 看板 + 风险引擎联调通过**
+
+---
+
+## Phase 2：比价模块开发（W4）
+
+- [ ] `services/matching.py`：标题模糊匹配（pg_trgm + 人工确认 UI）
+- [ ] `tasks/sync_1688.py`：1688 价格拉取定时任务
+- [ ] `services/price_compare.py`：价格变动计算 + 预警触发（FR-03）
+- [ ] SKU 关联管理（前后端 CRUD）
+- [ ] 竞品监控页面
+- [ ] **里程碑：比价监控 + 预警联调通过**
+
+## Phase 3：AI 模块开发（W5）
+
+- [ ] `adapters/ai_provider.py`：统一适配层（GLM-5.2 主力 + GLM-5.1/deepseek 备用，自动切换）
+- [ ] Prompt 模板设计与优化
+- [ ] `tasks/generate_daily_report.py`：每日 AI 日报
+- [ ] AI 日报展示页面
+- [ ] 模型切换配置界面
+- [ ] **里程碑：AI 日报自动生成 + 多模型切换**
+
+## Phase 4：测试与修复（W6）
+
+- [ ] 后端单元测试覆盖率 ≥80%
+- [ ] 集成测试（关键 API 全覆盖，外部 API 用 Mock）
+- [ ] 按 `8.测试计划与用例.md` 执行功能测试（9 组用例）
+- [ ] Bug 修复
+- [ ] UAT 验收
+- [ ] **里程碑：0 个 P0 Bug，UAT 通过**
+
+## Phase 5：部署上线（W6 末）
+
+- [ ] 生产环境配置（按 `9.部署与运维方案.md`）
+- [ ] Docker 镜像构建 + Docker Compose 部署
+- [ ] Nginx 配置（反向代理 + IP 白名单 + HTTPS）
+- [ ] 数据库初始化 + 首次数据同步
+- [ ] 上线后 12 小时监控观察
+- [ ] **里程碑：系统正式上线**
+
+---
+
+## 备注
+
+- 代码必须遵循 `7.开发规范与质量标准.md`（PEP8+black、类型注解、Google style docstring、ESLint+Prettier）。
+- 每次数据库/API 变更须同步更新 `项目开发文档/` 对应文档（文档与代码同源）。
+- 已绑定的 Skills（database-design / security-best-practices / python-skills 等）自动优先使用。
+- 提交规范：`<type>(<scope>): <subject>`。
