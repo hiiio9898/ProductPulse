@@ -8,7 +8,7 @@
 
 ## 进度总览
 
-- [ ] Phase 0：环境与版本控制准备（W1）
+- [x] Phase 0：环境与版本控制准备（W1）
 - [ ] Phase 1：核心功能开发（W2-W3）
 - [ ] Phase 2：比价模块开发（W4）
 - [ ] Phase 3：AI 模块开发（W5）
@@ -45,7 +45,7 @@
 ### 0.4 本地基础设施（Docker Compose）
 - [x] `docker-compose.yml`：PostgreSQL 15 + Redis 7
 - [x] 数据卷持久化、healthcheck
-- [~] 能 `docker compose up -d`（待装 Docker） 起依赖服务
+- [x] 能 `docker compose up -d`（Docker Desktop 29.6.1 + PG15/Redis7 healthy + 后端 Redis 连接正常）
 
 ### 0.5 三方 API 接入准备（用户侧 + 脚本）
 > 用户侧动作（需提醒用户，外部审核有等待期）：
