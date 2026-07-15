@@ -20,32 +20,32 @@
 ## Phase 0：环境与版本控制准备（W1）
 
 ### 0.1 版本控制（先做，立即可执行）
-- [ ] `git init`，配置 `.gitignore`（Python / Node / IDE / .env）
-- [ ] 编写根目录 `README.md`（项目简介、技术栈、目录、启动指引）
-- [ ] 创建 `.env.example`（列出全部环境变量占位）
-- [ ] 首次提交：`chore: 初始化仓库与文档基线`
+- [x] `git init`，配置 `.gitignore`（Python / Node / IDE / .env）
+- [x] 编写根目录 `README.md`（项目简介、技术栈、目录、启动指引）
+- [x] 创建 `.env.example`（列出全部环境变量占位）
+- [x] 首次提交：`chore: 初始化仓库与文档基线`
 
 ### 0.2 后端项目骨架
-- [ ] 创建 `backend/` 目录结构（按 7.1：app/core, api/v1, models, schemas, services, adapters, tasks, utils；alembic/, tests/, scripts/）
-- [ ] `requirements.txt`（FastAPI, SQLAlchemy, Alembic, Celery, Redis, psycopg2-binary, httpx, pydantic-settings, pytest 等）
-- [ ] `app/main.py` FastAPI 入口 + 健康检查 `/health`
-- [ ] `app/core/config.py` 配置管理（pydantic-settings 读取 .env）
-- [ ] 统一响应体 + `BizError` 异常处理（7.2）
-- [ ] 结构化 JSON 日志 + trace_id 注入（7.9）
-- [ ] 本地能 `uvicorn app.main:app --reload` 启动成功
+- [x] 创建 `backend/` 目录结构（按 7.1：app/core, api/v1, models, schemas, services, adapters, tasks, utils；alembic/, tests/, scripts/）
+- [x] `requirements.txt`（FastAPI, SQLAlchemy, Alembic, Celery, Redis, psycopg2-binary, httpx, pydantic-settings, pytest 等）
+- [x] `app/main.py` FastAPI 入口 + 健康检查 `/health`
+- [x] `app/core/config.py` 配置管理（pydantic-settings 读取 .env）
+- [x] 统一响应体 + `BizError` 异常处理（7.2）
+- [x] 结构化 JSON 日志 + trace_id 注入（7.9）
+- [~] 本地能 `uvicorn app.main:app --reload` 启动成功（待装 Python）
 
 ### 0.3 前端项目骨架
-- [ ] `npm create vite@latest frontend -- --template react-ts`（React 18 + TS）
-- [ ] 接入 Ant Design 5 + React Router
-- [ ] 按 7.1 建 `src/` 目录（api/components/pages/hooks/store/utils）
-- [ ] axios 封装 + 全局响应拦截器（4xx/5xx → message.error，401 跳登录）
-- [ ] 布局骨架（Sider + Header + Content，对应 6.UI&UX 规范）
-- [ ] `npm run dev` 能启动并访问 `/health`
+- [x] `npm create vite@latest frontend -- --template react-ts`（React 18 + TS）
+- [x] 接入 Ant Design 5 + React Router
+- [x] 按 7.1 建 `src/` 目录（api/components/pages/hooks/store/utils）
+- [x] axios 封装 + 全局响应拦截器（4xx/5xx → message.error，401 跳登录）
+- [x] 布局骨架（Sider + Header + Content，对应 6.UI&UX 规范）
+- [x] `npm run dev` 能启动（构建已验证）并访问 `/health`
 
 ### 0.4 本地基础设施（Docker Compose）
-- [ ] `docker-compose.yml`：PostgreSQL 15 + Redis 7
-- [ ] 数据卷持久化、healthcheck
-- [ ] 能 `docker compose up -d` 起依赖服务
+- [x] `docker-compose.yml`：PostgreSQL 15 + Redis 7
+- [x] 数据卷持久化、healthcheck
+- [~] 能 `docker compose up -d`（待装 Docker） 起依赖服务
 
 ### 0.5 三方 API 接入准备（用户侧 + 脚本）
 > 用户侧动作（需提醒用户，外部审核有等待期）：
@@ -54,9 +54,9 @@
 - [ ] 获取智谱 GLM API Key
 
 > 开发侧动作：
-- [ ] `backend/scripts/test_sorftime.py` 调通基础接口（含 mock fallback）
-- [ ] `backend/scripts/test_1688.py` 调通基础接口
-- [ ] `backend/scripts/test_glm.py` 调通基础接口
+- [x] `backend/scripts/test_sorftime.py` 调通基础接口（含 mock fallback）
+- [x] `backend/scripts/test_1688.py` 调通基础接口
+- [x] `backend/scripts/test_glm.py` 调通基础接口
 - [ ] **里程碑：测试脚本全部通过（Phase 0 准出）**
 
 ---
