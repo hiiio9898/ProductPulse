@@ -146,3 +146,16 @@
 - 每次数据库/API 变更须同步更新 `项目开发文档/` 对应文档（文档与代码同源）。
 - 已绑定的 Skills（database-design / security-best-practices / python-skills 等）自动优先使用。
 - 提交规范：`<type>(<scope>): <subject>`。
+---
+
+## 追加任务：Sorftime 真实接口接入（2026-07-15）
+
+> 用户提供 Sorftime 亚马逊数据 API 13 个接口文档后，将笼统的「Sorftime 数据源」落实为具体接口。
+
+- [x] 整理 13 个接口规格为结构化参考文档（附录A-Sorftime接口规格.md）
+- [x] 实现 `schemas/sorftime.py`（13 接口入参/出参类型）
+- [x] 实现 `adapters/sorftime.py`（13 接口 + 重试/超时/缓存/容错解析/字段映射）
+- [x] 编写适配层单元测试（mock，覆盖解析与字段差异）
+- [~] 真实连通性验证（待 SORFTIME_API_KEY 到位 + Python 环境就绪）
+- [ ] 选品算法引擎对齐 Sorftime 真实字段（Phase 1，product_search/potential_product）
+- [ ] 每日拉取任务改用 product_search（Phase 1 tasks/sync_sorftime.py）
