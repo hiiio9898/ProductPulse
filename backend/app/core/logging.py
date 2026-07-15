@@ -19,9 +19,8 @@ from app.core.config import settings
 
 def setup_logging() -> None:
     """初始化 structlog，输出结构化 JSON 日志。"""
-    log_level = getattr(logging, settings.log_level.upper, logging.INFO)
-    if isinstance(settings.log_level, str):
-        log_level = getattr(logging, settings.log_level.upper(), logging.INFO)
+    level_name = str(settings.log_level).upper()
+    log_level = getattr(logging, level_name, logging.INFO)
 
     logging.basicConfig(
         format="%(message)s",

@@ -32,7 +32,7 @@
 - [x] `app/core/config.py` 配置管理（pydantic-settings 读取 .env）
 - [x] 统一响应体 + `BizError` 异常处理（7.2）
 - [x] 结构化 JSON 日志 + trace_id 注入（7.9）
-- [~] 本地能 `uvicorn app.main:app --reload` 启动成功（待装 Python）
+- [x] 本地能 `uvicorn app.main:app --reload` 启动成功（Python 3.10.11 + 16 passed + health 200）
 
 ### 0.3 前端项目骨架
 - [x] `npm create vite@latest frontend -- --template react-ts`（React 18 + TS）
