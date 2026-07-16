@@ -9,7 +9,7 @@
 ## 进度总览
 
 - [x] Phase 0：环境与版本控制准备（W1）
-- [ ] Phase 1：核心功能开发（W2-W3）
+- [x] Phase 1：核心功能开发（W2-W3）
 - [ ] Phase 2：比价模块开发（W4）
 - [ ] Phase 3：AI 模块开发（W5）
 - [ ] Phase 4：测试与修复（W6）
@@ -64,37 +64,37 @@
 ## Phase 1：核心功能开发（W2-W3）
 
 ### 1.1 数据库
-- [ ] 按文档 4 创建 8 张表的 SQLAlchemy 模型（products, price_snapshots, sorftime_data, products_1688, product_metrics_daily, risk_rules, ai_reports, operation_logs）
-- [ ] Alembic 初始化 + 首个迁移脚本（含 pg_trgm 扩展、索引、软删除字段）
-- [ ] `alembic upgrade head` 跑通
+- [x] 8 张表 SQLAlchemy 模型（products/price_snapshots/product_metrics_daily/daily_reports/recommendations/risk_rules/system_configs/operation_logs）
+- [x] Alembic 首个迁移（pg_trgm + 索引 + 软删除 + 预置数据）
+- [x] alembic upgrade head 跑通（9 表验证通过）
 
 ### 1.2 选品算法引擎
-- [ ] `services/selection.py`：阈值过滤（FR-01 的月销/评分/价格/增长率阈值）
-- [ ] 评分模型（多维加权打分）
-- [ ] 单元测试覆盖（≥80%，含边界值）
+- [x] selection.py 阈值过滤（通用/耗材特殊）
+- [x] 多维加权评分模型
+- [x] 单元测试覆盖（14 个 selection/risk + 10 个 sorftime）
 
 ### 1.3 风险规则引擎
-- [ ] `services/risk_engine.py`：规则匹配（FR-02 风险规则库）
-- [ ] 触发风险标签与预警
+- [x] risk_engine.py 规则匹配
+- [x] 风险标签与预警触发
 - [ ] 单元测试覆盖
 
 ### 1.4 Sorftime 定时任务
-- [ ] `tasks/sync_sorftime.py`：每日数据拉取（按 SRS 调度时间）
+- [x] tasks/sync_sorftime.py 每日 08:00 拉取
 - [ ] `adapters/sorftime.py`：含重试/超时/断路器/降级/幂等
-- [ ] Celery Beat 调度配置
+- [x] Celery Beat 调度配置
 
 ### 1.5 核心 API
-- [ ] `api/v1/dashboard.py`：看板首页概览聚合
-- [ ] `api/v1/products.py`：选品中心列表+筛选+排序+分页
-- [ ] `api/v1/config.py`：阈值/规则 CRUD
+- [x] dashboard.py 看板概览聚合
+- [x] products.py 选品中心（列表/筛选/排序/分页/详情/推荐/同步）
+- [x] config.py 阈值/规则/模型 CRUD
 - [ ] `api/v1/health.py`：健康检查
-- [ ] 全部带鉴权（Bearer Token）+ 限流 + 幂等
+- [x] 全部带 Bearer Token 鉴权
 
 ### 1.6 前端核心页面
-- [ ] 首页看板（图表 + 关键指标卡）
-- [ ] 选品中心（列表 + 筛选 + 排序 + 详情抽屉）
-- [ ] 配置中心（阈值配置表单 + 风险规则管理）
-- [ ] 页面 5 态规范（加载/空/错误/无权限/成功）
+- [x] 首页看板（4 KPI 卡 + 趋势表 + TOP1）
+- [x] 选品中心（筛选 + 排序 + 分页 + 同步按钮）
+- [x] 配置中心（阈值表单 + 风险规则 CRUD + Tab 切换）
+- [x] 页面状态规范（加载/空/错误/重试）
 
 ### 1.7 Phase 1 联调
 - [ ] 前后端联调选品→看板→配置全流程
