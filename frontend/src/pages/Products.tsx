@@ -49,7 +49,7 @@ export default function Products() {
     { title: "标题", dataIndex: "title", key: "title", ellipsis: true, width: 280 },
     { title: "品类", dataIndex: "category", key: "category", width: 100 },
     { title: "月销量", dataIndex: "monthly_sales", key: "monthly_sales", width: 90, sorter: true },
-    { title: "价格", dataIndex: "price", key: "price", width: 80, render: (v: number | null) => v ? `$${v}` : "-" },
+    { title: "价格", dataIndex: "price", key: "price", width: 80, render: (v: number | null) => v ? `$${(v / 100).toFixed(2)}` : "-" },
     {
       title: "综合评分", dataIndex: "comprehensive_score", key: "score", width: 100,
       sorter: true, defaultSortOrder: "descend" as const,
