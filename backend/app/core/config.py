@@ -76,8 +76,8 @@ class Settings(BaseSettings):
 
     # ---------- AI ----------
     glm_api_key: str = ""
-    glm_model_primary: str = "glm-5.2"
-    glm_model_fallback: str = "glm-5.1"
+    glm_model_primary: str = "glm-4-flash"
+    glm_model_fallback: str = "glm-4-flash"
 
     # ---------- 日志 ----------
     log_level: str = "INFO"

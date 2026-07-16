@@ -34,6 +34,7 @@ ProductPulse/
 | 安全最佳实践评审 | `security-best-practices` | 评审 FastAPI 后端、React 前端的安全（API Key 管理、SQL 注入、令牌哈希、OWASP Top 10） |
 | API 文档撰写 | `code-documentation` | 撰写/校正 API 接口文档（鉴权/幂等/错误示例）、README、开发者指南 |
 | 测试用例设计 | `pm-execution-test-scenarios` | 由 FR 需求派生测试场景与用例（含边界/非功能，补充 8.测试计划） |
+| 前端验收测试 | webapp-testing + playwright | 用 Playwright 驱动 React/AntD 看板与配置中心，完成 SRS 验收点（FR-01~06）的端到端与交互验证 |
 | UI/UX 设计与评审 | `ui-ux-pro-max` + `web-design-guidelines` | 看板/配置中心页面设计、页面状态规范、设计 Token、可访问性评审 |
 | 落地页/营销页设计 | design-taste-frontend | **仅限**项目落地页、介绍页、营销类页面设计；该 skill 自述「不适用于 dashboard/数据表/多步产品 UI」，故看板与配置中心页面仍用上一行 skill |
 | Python 工程规范 | `python-skills` | 后端代码模式、异步、类型注解、错误处理、测试 |
@@ -59,4 +60,4 @@ ProductPulse/
 
 - v1.0（2026-07-15）：初版拆分整理 + 首轮评审修订（格式修复 + 内容补全）。
 - v1.1（2026-07-15）：第二轮增强，详见 `项目开发文档/README.md` 修订历史。
-- v1.2（2026-07-16）：Skills 表新增 design-taste-frontend（落地页/营销页设计），并注明其不适用于看板/数据表类 UI 的边界。
+- v1.2（2026-07-16）：Skills 表新增 design-taste-frontend（落地页/营销页设计），并注明其不适用于看板/数据表类 UI 的边界。同日补充 webapp-testing + playwright（前端验收测试）。

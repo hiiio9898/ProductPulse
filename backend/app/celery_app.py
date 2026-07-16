@@ -3,7 +3,8 @@
 Beat 调度配置在 Phase 1 接入具体任务后补充。
 """
 
-from celery import Celery, crontab
+from celery import Celery
+from celery.schedules import crontab
 
 from app.core.config import settings
 

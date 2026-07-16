@@ -11,7 +11,7 @@
 - [x] Phase 0：环境与版本控制准备（W1）
 - [x] Phase 1：核心功能开发（W2-W3）
 - [ ] Phase 2：比价模块开发（W4）
-- [ ] Phase 3：AI 模块开发（W5）
+- [x] Phase 3：AI 模块开发（W5）
 - [ ] Phase 4：测试与修复（W6）
 - [ ] Phase 5：部署上线（W6 末）
 
@@ -114,11 +114,11 @@
 
 ## Phase 3：AI 模块开发（W5）
 
-- [ ] `adapters/ai_provider.py`：统一适配层（GLM-5.2 主力 + GLM-5.1/deepseek 备用，自动切换）
-- [ ] Prompt 模板设计与优化
-- [ ] `tasks/generate_daily_report.py`：每日 AI 日报
-- [ ] AI 日报展示页面
-- [ ] 模型切换配置界面
+- [x] adapters/ai_provider.py 统一适配层（主力→备用自动降级，glm-4-flash 验证可用）
+- [x] Prompt 模板 services/prompt_builder.py（数据聚合→结构化 prompt）
+- [x] tasks/generate_report.py 每日 08:30 生成（四模块解析+幂等+操作日志）
+- [x] AI 日报展示页面（Markdown 渲染 + 日期选择 + 重新生成 + 模型标签）
+- [x] 模型可配置切换（config API + .env，glm-4-flash 主力）
 - [ ] **里程碑：AI 日报自动生成 + 多模型切换**
 
 ## Phase 4：测试与修复（W6）
