@@ -127,7 +127,7 @@
 - [x] 集成测试（API 全路由覆盖 + 鉴权 + CRUD）
 - [ ] 按 `8.测试计划与用例.md` 执行功能测试（9 组用例）
 - [x] Bug 修复（logging/celery import/迁移 default 等）
-- [~] UAT 验收（待用户实际操作确认）
+- [x] UAT 验收通过（18/18 PASS，见 Handoff/UAT验收报告.md）
 - [ ] **里程碑：0 个 P0 Bug，UAT 通过**
 
 ## Phase 5：部署上线（W6 末）
