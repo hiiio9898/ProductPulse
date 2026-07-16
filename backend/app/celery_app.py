@@ -3,7 +3,7 @@
 Beat 调度配置在 Phase 1 接入具体任务后补充。
 """
 
-from celery import Celery
+from celery import Celery, crontab
 
 from app.core.config import settings
 
@@ -23,4 +23,11 @@ celery_app.conf.update(
 )
 
 # Phase 1 在此注册任务模块
-celery_app.autodiscover_tasks([])
+celery_app.autodiscover_tasks(["app.tasks"])
+celery_app.conf.beat_schedule = {
+    "sync-sorftime-daily": {
+        "task": "sync_sorftime_daily",
+        "schedule": crontab(hour=8, minute=0),
+        "options": {"timezone": "Asia/Shanghai"},
+    },
+}
