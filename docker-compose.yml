@@ -1,6 +1,6 @@
-# 生产部署完整编排（对应 部署文档 9.2）
-# 含 app / celery / nginx，需先 build 镜像（backend/Dockerfile）
+# 生产部署完整编排（对应 部署文档 9.2-9.3）
 # 用法：docker compose up -d
+# 注意：首次部署后执行 docker compose exec app python scripts/init_db.py 初始化数据
 
 services:
   postgres:
@@ -20,6 +20,11 @@ services:
       interval: 30s
       timeout: 5s
       retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
 
   redis:
     image: redis:7
@@ -32,20 +37,34 @@ services:
       interval: 30s
       timeout: 5s
       retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
 
   app:
     build: ./backend
     container_name: productpulse_app
     restart: always
+    # 启动时先跑 alembic 迁移，再启动 uvicorn
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
     environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - APP_SECRET_KEY=${APP_SECRET_KEY}
       - DATABASE_URL=postgresql://productpulse:${DB_PASSWORD}@postgres:5432/productpulse
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/1
       - CELERY_RESULT_BACKEND=redis://redis:6379/2
-      - SORFTIME_API_KEY=${SORFTIME_API_KEY}
-      - ALI1688_APP_KEY=${ALI1688_APP_KEY}
-      - ALI1688_APP_SECRET=${ALI1688_APP_SECRET}
+      - SORFTIME_API_SK=${SORFTIME_API_SK}
+      - SORFTIME_MCP_SK=${SORFTIME_MCP_SK}
       - GLM_API_KEY=${GLM_API_KEY}
+      - GLM_MODEL_PRIMARY=${GLM_MODEL_PRIMARY:-glm-4-flash}
+      - GLM_MODEL_FALLBACK=${GLM_MODEL_FALLBACK:-glm-4-flash}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost}
     ports:
       - "8000:8000"
     depends_on:
@@ -54,10 +73,16 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/v1/health || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
+      start_period: 40s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
 
   celery:
     build: ./backend
@@ -65,15 +90,26 @@ services:
     restart: always
     command: celery -A app.celery_app worker --beat --loglevel=info
     environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - APP_SECRET_KEY=${APP_SECRET_KEY}
       - DATABASE_URL=postgresql://productpulse:${DB_PASSWORD}@postgres:5432/productpulse
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/1
       - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - SORFTIME_API_SK=${SORFTIME_API_SK}
+      - GLM_API_KEY=${GLM_API_KEY}
+      - GLM_MODEL_PRIMARY=${GLM_MODEL_PRIMARY:-glm-4-flash}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
 
   nginx:
     image: nginx:alpine
@@ -81,12 +117,17 @@ services:
     restart: always
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./frontend/dist:/usr/share/nginx/html
+      - ./frontend/dist:/usr/share/nginx/html:ro
     ports:
       - "80:80"
       - "443:443"
     depends_on:
       - app
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
 
 volumes:
   pg_data:
