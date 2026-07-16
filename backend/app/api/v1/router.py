@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from app.api.v1 import health, dashboard, products, config, reports
+from app.api.v1 import health, dashboard, products, config, reports, price
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(health.router)
@@ -10,3 +10,4 @@ api_router.include_router(dashboard.router)
 api_router.include_router(products.router)
 api_router.include_router(config.router)
 api_router.include_router(reports.router)
+api_router.include_router(price.router)

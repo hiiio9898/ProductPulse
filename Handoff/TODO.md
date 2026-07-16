@@ -10,7 +10,7 @@
 
 - [x] Phase 0：环境与版本控制准备（W1）
 - [x] Phase 1：核心功能开发（W2-W3）
-- [ ] Phase 2：比价模块开发（W4）
+- [x] Phase 2：比价模块开发（W4）
 - [x] Phase 3：AI 模块开发（W5）
 - [ ] Phase 4：测试与修复（W6）
 - [ ] Phase 5：部署上线（W6 末）
@@ -102,13 +102,13 @@
 
 ---
 
-## Phase 2：比价模块开发（W4）⚠️ 暂缓执行（用户决定保留设计、后续按需启用）
+## Phase 2：比价模块开发（W4）✅ 已启用并完成
 
-- [ ] `services/matching.py`：标题模糊匹配（pg_trgm + 人工确认 UI）
-- [ ] `tasks/sync_1688.py`：1688 价格拉取定时任务
-- [ ] `services/price_compare.py`：价格变动计算 + 预警触发（FR-03）
-- [ ] SKU 关联管理（前后端 CRUD）
-- [ ] 竞品监控页面
+- [x] services/price_compare.py 标题匹配 + 利润计算 + 预警判定
+- [x] tasks/sync_1688.py 每日 08:30 刷新价格
+- [x] 价格变动 ±5% 预警触发（成本预警/降价利好）
+- [x] SKU 关联管理（手动匹配 + 确认/拒绝 API）
+- [x] 竞品监控页面（预警列表 + 刷新按钮）
 - [ ] **里程碑：比价监控 + 预警联调通过**
 > 说明：1688 比价能力已通过 Sorftime ProductSearchFromName(domain=601) 验证可用，适配层已就绪。本阶段业务逻辑暂不实现，保留待用户后续按需启动。
 
