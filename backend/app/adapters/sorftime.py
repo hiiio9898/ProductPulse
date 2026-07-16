@@ -395,21 +395,24 @@ class SorftimeAdapter:
     def _parse_tiktok_product(p: dict) -> ProductListItem:
         """将 TikTok ProductSummeryObject 映射为统一 ProductListItem。
 
-        TikTok 字段差异：
+        TikTok 字段差异（与 Amazon 不同）：
+        - ProductName（非 Title）——产品名称
+        - Photo（非 Image）——产品主图
+        - Price 单位是美元（Amazon 是美分）
         - ProductId（非 asin）
-        - Price（非 SalesPrice），单位美元（非美分）
         - MonthlySaleCount（非 ListingSalesVolumeOfMonth）
         - ReviewCount（非 RatingsCount）
+        - BrandName（非 Brand）
         """
         return ProductListItem(
             asin=str(SorftimeAdapter._g(p, "ProductId", "productId") or ""),
             parent_asin=None,
-            title=SorftimeAdapter._g(p, "Title", "title") or "",
-            image=SorftimeAdapter._g(p, "Image", "MainImage", "image"),
+            title=SorftimeAdapter._g(p, "ProductName", "productName", "Title", "title") or "",
+            image=SorftimeAdapter._g(p, "Photo", "photo", "Image", "image"),
             price=_to_float(SorftimeAdapter._g(p, "Price", "price")),
-            rating=_to_float(SorftimeAdapter._g(p, "Star", "Rating", "star", "rating")),
+            rating=_to_float(SorftimeAdapter._g(p, "Star", "star", "Rating", "rating")),
             ratings_count=_to_int(SorftimeAdapter._g(p, "ReviewCount", "reviewCount")),
-            brand=SorftimeAdapter._g(p, "Brand", "brand"),
+            brand=SorftimeAdapter._g(p, "BrandName", "brandName", "Brand", "brand"),
             monthly_sales=_to_int(SorftimeAdapter._g(p, "MonthlySaleCount", "monthlySaleCount")),
             monthly_revenue=_to_float(SorftimeAdapter._g(p, "MonthlySalesAmount", "monthlySalesAmount")),
             potential_index=None,

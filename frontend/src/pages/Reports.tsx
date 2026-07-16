@@ -39,7 +39,7 @@ export default function Reports() {
   const handleRegenerate = async () => {
     setGenerating(true);
     try {
-      await triggerGenerate(date.format("YYYY-MM-DD"));
+      await triggerGenerate(date.format("YYYY-MM-DD"), true);
       message.success(t("reports.generating"));
       setTimeout(() => loadReport(date), 5000);
     } catch {

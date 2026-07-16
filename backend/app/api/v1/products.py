@@ -62,6 +62,7 @@ async def list_products(
             "id": p.id,
             "sorftime_id": p.sorftime_id,
             "title": p.title,
+            "platform": p.platform,
             "category": p.category,
             "monthly_sales": p.monthly_sales,
             "price": float(p.price) if p.price else None,
