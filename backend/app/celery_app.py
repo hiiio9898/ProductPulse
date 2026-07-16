@@ -1,6 +1,9 @@
 """Celery 应用配置。
 
-Beat 调度配置在 Phase 1 接入具体任务后补充。
+定时任务调度：
+- 08:00 Sorftime 选品数据同步
+- 08:30 1688 拿货价刷新
+- 09:00 AI 日报生成
 """
 
 from celery import Celery
@@ -23,12 +26,22 @@ celery_app.conf.update(
     task_track_started=True,
 )
 
-# Phase 1 在此注册任务模块
 celery_app.autodiscover_tasks(["app.tasks"])
+
 celery_app.conf.beat_schedule = {
     "sync-sorftime-daily": {
         "task": "sync_sorftime_daily",
         "schedule": crontab(hour=8, minute=0),
+        "options": {"timezone": "Asia/Shanghai"},
+    },
+    "sync-1688-prices": {
+        "task": "sync_1688_prices",
+        "schedule": crontab(hour=8, minute=30),
+        "options": {"timezone": "Asia/Shanghai"},
+    },
+    "generate-daily-report": {
+        "task": "generate_daily_report",
+        "schedule": crontab(hour=9, minute=0),
         "options": {"timezone": "Asia/Shanghai"},
     },
 }
