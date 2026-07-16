@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import MainLayout from "./components/MainLayout";
 import Dashboard from "./pages/Dashboard";
@@ -5,8 +6,15 @@ import Products from "./pages/Products";
 import Monitor from "./pages/Monitor";
 import Reports from "./pages/Reports";
 import Config from "./pages/Config";
+import Login from "./pages/Login";
 
 function App() {
+  const [token, setToken] = useState(() => localStorage.getItem("pp_token") || "");
+
+  if (!token) {
+    return <Login onLogin={setToken} />;
+  }
+
   return (
     <Routes>
       <Route path="/" element={<MainLayout />}>
