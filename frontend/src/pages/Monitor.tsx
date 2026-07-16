@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Card, Table, Tag, Button, Space, message, Empty, Spin } from "antd";
 import { ReloadOutlined } from "@ant-design/icons";
+import { useTranslation } from "react-i18next";
 import { getPriceAlerts, refreshAllPrices, type PriceAlert } from "../api/price";
 
 export default function Monitor() {
+  const { t } = useTranslation();
   const [alerts, setAlerts] = useState<PriceAlert[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -14,7 +16,7 @@ export default function Monitor() {
       const res = await getPriceAlerts();
       setAlerts(res.items);
     } catch {
-      message.error("预警加载失败");
+      message.error(t("monitor.empty"));
     } finally {
       setLoading(false);
     }
@@ -26,42 +28,40 @@ export default function Monitor() {
     setRefreshing(true);
     try {
       await refreshAllPrices();
-      message.success("价格刷新任务已提交");
+      message.success(t("monitor.refresh"));
       setTimeout(loadData, 3000);
     } catch {
-      message.error("刷新失败");
+      message.error(t("monitor.refresh"));
     } finally {
       setRefreshing(false);
     }
   };
 
-  const alertMeta: Record<string, { color: string; text: string }> = {
-    cost_alert: { color: "red", text: "成本上涨预警" },
-    price_drop: { color: "green", text: "降价利好" },
-  };
-
   const columns = [
-    { title: "产品", dataIndex: "title", key: "title", ellipsis: true },
+    { title: t("monitor.product"), dataIndex: "title", key: "title", ellipsis: true },
     {
-      title: "1688 价格", dataIndex: "price_1688", key: "price_1688", width: 100,
-      render: (v: number | null) => v ? `¥${v}` : "-",
+      title: t("monitor.price1688"), dataIndex: "price_1688", key: "price_1688", width: 100,
+      render: (v: number | null) => v ? `\u00a5${v}` : "-",
     },
     {
-      title: "变动幅度", dataIndex: "price_change_percent", key: "change", width: 100,
+      title: t("monitor.change"), dataIndex: "price_change_percent", key: "change", width: 100,
       render: (v: number) => (
         <span style={{ color: v > 0 ? "#ff4d4f" : "#52c41a", fontWeight: 600 }}>
-          {v > 0 ? "↑" : "↓"} {Math.abs(v).toFixed(1)}%
+          {v > 0 ? "\u2191" : "\u2193"} {Math.abs(v).toFixed(1)}%
         </span>
       ),
     },
     {
-      title: "预警类型", dataIndex: "alert", key: "alert", width: 120,
+      title: t("monitor.alert"), dataIndex: "alert", key: "alert", width: 120,
       render: (v: string) => {
-        const meta = alertMeta[v] || { color: "default", text: v };
-        return <Tag color={meta.color}>{meta.text}</Tag>;
+        const meta: Record<string, { color: string }> = {
+          cost_alert: { color: "red" },
+          price_drop: { color: "green" },
+        };
+        return <Tag color={meta[v]?.color || "default"}>{t(`monitor.alerts.${v}`, { defaultValue: v })}</Tag>;
       },
     },
-    { title: "快照日期", dataIndex: "snapshot_date", key: "date", width: 110 },
+    { title: t("footer.lastUpdated"), dataIndex: "snapshot_date", key: "date", width: 110 },
   ];
 
   return (
@@ -69,15 +69,14 @@ export default function Monitor() {
       <Card style={{ marginBottom: 16 }}>
         <Space>
           <Button type="primary" icon={<ReloadOutlined spin={refreshing} />} loading={refreshing} onClick={handleRefresh}>
-            刷新全部价格
+            {t("monitor.refresh")}
           </Button>
-          <span style={{ color: "#8c8c8c" }}>刷新已关联 1688 的产品拿货价，变动 ≥5% 自动预警</span>
         </Space>
       </Card>
 
-      <Card title={`价格预警（${alerts.length}）`}>
+      <Card title={`${t("monitor.title")} (${alerts.length})`}>
         {loading ? <Spin /> : alerts.length === 0 ? (
-          <Empty description="暂无价格预警，所有关联产品价格稳定" />
+          <Empty description={t("monitor.empty")} />
         ) : (
           <Table dataSource={alerts} columns={columns} rowKey="product_id" size="middle" pagination={false} />
         )}

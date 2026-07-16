@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Card, Col, Row, Statistic, Table, Spin, Empty, message } from "antd";
+import { useTranslation } from "react-i18next";
 import { getOverview, type OverviewData, type TrendItem, getTrends } from "../api/dashboard";
 
 export default function Dashboard() {
+  const { t } = useTranslation();
   const [overview, setOverview] = useState<OverviewData | null>(null);
   const [trends, setTrends] = useState<TrendItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -17,7 +19,7 @@ export default function Dashboard() {
       setTrends(tr);
     } catch {
       setError(true);
-      message.error("数据加载失败");
+      message.error(t("products.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -28,8 +30,8 @@ export default function Dashboard() {
   if (loading) return <Spin size="large" />;
   if (error) {
     return (
-      <Empty description="数据加载失败">
-        <a onClick={loadData}>点击重试</a>
+      <Empty description={t("products.loadFailed")}>
+        <a onClick={loadData}>{t("common.retry")}</a>
       </Empty>
     );
   }
@@ -38,22 +40,22 @@ export default function Dashboard() {
     <div>
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col span={6}>
-          <Card><Statistic title="今日推荐数" value={overview?.recommendations_today ?? 0} /></Card>
+          <Card><Statistic title={t("dashboard.recommendations")} value={overview?.recommendations_today ?? 0} /></Card>
         </Col>
         <Col span={6}>
-          <Card><Statistic title="预警数量" value={overview?.alerts_count ?? 0} valueStyle={{ color: "#ff4d4f" }} /></Card>
+          <Card><Statistic title={t("dashboard.alerts")} value={overview?.alerts_count ?? 0} valueStyle={{ color: "#ff4d4f" }} /></Card>
         </Col>
         <Col span={6}>
-          <Card><Statistic title="待匹配 SKU" value={overview?.pending_sku_count ?? 0} valueStyle={{ color: "#faad14" }} /></Card>
+          <Card><Statistic title={t("dashboard.pending")} value={overview?.pending_sku_count ?? 0} valueStyle={{ color: "#faad14" }} /></Card>
         </Col>
         <Col span={6}>
-          <Card><Statistic title="综合评分 TOP1" value={overview?.top_score ?? 0} precision={1} valueStyle={{ color: "#52c41a" }} /></Card>
+          <Card><Statistic title={t("dashboard.topScore")} value={overview?.top_score ?? 0} precision={1} valueStyle={{ color: "#52c41a" }} /></Card>
         </Col>
       </Row>
 
-      <Card title="近 7 天品类趋势">
+      <Card title={t("dashboard.trends")}>
         {trends.length === 0 ? (
-          <Empty description="暂无趋势数据" />
+          <Empty description={t("dashboard.noProduct")} />
         ) : (
           <Table
             dataSource={trends}
@@ -61,16 +63,16 @@ export default function Dashboard() {
             pagination={false}
             size="small"
             columns={[
-              { title: "日期", dataIndex: "date", key: "date" },
-              { title: "产品数", dataIndex: "product_count", key: "product_count" },
-              { title: "平均月销量", dataIndex: "avg_sales", key: "avg_sales" },
+              { title: t("footer.lastUpdated"), dataIndex: "date", key: "date" },
+              { title: t("products.title"), dataIndex: "product_count", key: "product_count" },
+              { title: t("products.monthlySales"), dataIndex: "avg_sales", key: "avg_sales" },
             ]}
           />
         )}
       </Card>
 
       {overview?.top_product_title && (
-        <Card title="TOP1 产品" style={{ marginTop: 16 }}>
+        <Card title={`TOP1`} style={{ marginTop: 16 }}>
           {overview.top_product_title}
         </Card>
       )}

@@ -33,7 +33,7 @@ def generate_daily_report(self, target_date: str | None = None) -> dict:
     try:
         # 幂等：同一天已生成则跳过（除非强制）
         existing = db.query(DailyReport).filter_by(report_date=report_date).first()
-        if existing and existing.recommendations:
+        if existing:
             logger.info("日报已存在，跳过", date=str(report_date))
             return {"status": "skipped", "date": str(report_date), "id": existing.id}
 
@@ -52,11 +52,9 @@ def generate_daily_report(self, target_date: str | None = None) -> dict:
         # 解析 Markdown 为四模块（简单按标题分割）
         sections = _split_sections(result.content)
 
-        # 写入数据库
-        if existing:
-            report = existing
-        else:
-            report = DailyReport(report_date=report_date)
+        # 写入数据库（已存在则更新）
+        report = existing or DailyReport(report_date=report_date)
+        if not existing:
             db.add(report)
 
         report.recommendations = sections.get("今日推荐", "")

@@ -23,6 +23,8 @@ router = APIRouter(tags=["products"])
 
 @router.get("/products/")
 async def list_products(
+    platform: str | None = Query(default=None, pattern="^(amazon|tiktok)$"),
+    site: str | None = Query(default=None),
     category: str | None = Query(default=None),
     match_status: str | None = Query(default=None),
     min_score: float | None = Query(default=None),
@@ -36,6 +38,8 @@ async def list_products(
     """获取产品列表，支持多条件筛选与排序。"""
     query = select(Product).where(Product.deleted_at.is_(None))
 
+    if platform:
+        query = query.where(Product.platform == platform)
     if category:
         query = query.where(Product.category == category)
     if match_status:
@@ -130,8 +134,19 @@ async def weekly_recommendations(db: Session = Depends(get_db), _: bool = AuthRe
 
 
 @router.post("/products/sync")
-async def trigger_sync(_: bool = AuthRequired):
-    """手动触发 Sorftime 数据同步（异步任务）。"""
-    from app.tasks.sync_sorftime import sync_sorftime_daily
-    task = sync_sorftime_daily.delay()
-    return ok_response(data={"task_id": task.id, "status": "queued"})
+async def trigger_sync(
+    platform: str = Query(default="amazon", pattern="^(amazon|tiktok)$"),
+    site: str = Query(default="US"),
+    category: str | None = Query(default=None),
+    _: bool = AuthRequired,
+):
+    """手动触发数据同步（异步任务）。
+
+    platform: amazon 或 tiktok
+    site: 站点代码（Amazon: US/JP/DE..., TikTok: US/JP/GB...）
+    category: 可选，指定单个品类（不传则同步默认品类）
+    """
+    from app.tasks.sync_sorftime import sync_sorftime_daily, DEFAULT_CATEGORIES
+    cats = [category] if category else DEFAULT_CATEGORIES
+    task = sync_sorftime_daily.delay(categories=cats, platform=platform, site=site)
+    return ok_response(data={"task_id": task.id, "status": "queued", "platform": platform, "site": site})

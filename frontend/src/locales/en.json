@@ -1,0 +1,105 @@
+{
+  "app": {
+    "name": "ProductPulse",
+    "subtitle": "Foreign Trade Product Selection System"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "products": "Products",
+    "monitor": "Monitor",
+    "reports": "Reports",
+    "config": "Config"
+  },
+  "common": {
+    "loading": "Loading...",
+    "retry": "Retry",
+    "sync": "Sync",
+    "total": "Total",
+    "items": "items",
+    "logout": "Logout"
+  },
+  "login": {
+    "title": "ProductPulse",
+    "enterToken": "Enter access token",
+    "login": "Login",
+    "loginSuccess": "Login success",
+    "invalidToken": "Invalid token, please check",
+    "tokenHint": "Token configured by admin (APP_SECRET_KEY in backend .env)"
+  },
+  "products": {
+    "platform": "Platform",
+    "site": "Site",
+    "category": "Category",
+    "matchStatus": "Match Status",
+    "minScore": "Min Score",
+    "title": "Title",
+    "monthlySales": "Monthly Sales",
+    "price": "Price",
+    "score": "Score",
+    "reviews": "Reviews",
+    "risk": "Risk",
+    "match": "Match",
+    "categories": {
+      "filament": "3D Printer Filament",
+      "ink": "Sublimation Ink",
+      "paper": "Photo Paper"
+    },
+    "status": {
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "rejected": "Rejected"
+    },
+    "syncSuccess": "Sync queued",
+    "syncFailed": "Sync failed",
+    "empty": "No products found. Try syncing data first.",
+    "loadFailed": "Data load failed"
+  },
+  "monitor": {
+    "title": "Price Monitor",
+    "refresh": "Refresh Prices",
+    "product": "Product",
+    "price1688": "1688 Price",
+    "platformPrice": "Platform Price",
+    "change": "Change",
+    "profit": "Est. Profit",
+    "alert": "Alert",
+    "empty": "No price alerts yet. Sync products first to auto-match 1688 suppliers.",
+    "alerts": {
+      "cost_alert": "Cost Rising",
+      "price_drop": "Price Drop"
+    }
+  },
+  "dashboard": {
+    "recommendations": "Today's Picks",
+    "alerts": "Risk Alerts",
+    "pending": "Pending Match",
+    "topScore": "Top Score",
+    "trends": "7-Day Trends",
+    "noProduct": "No top product yet"
+  },
+  "reports": {
+    "title": "AI Daily Report",
+    "generate": "Generate Report",
+    "regenerate": "Regenerate",
+    "recommendations": "Recommendations",
+    "trendAnalysis": "Trend Analysis",
+    "riskAlerts": "Risk Alerts",
+    "actionSuggestions": "Action Suggestions",
+    "empty": "No report yet. Click generate to create one.",
+    "generating": "Generating...",
+    "modelUsed": "Model"
+  },
+  "config": {
+    "title": "Configuration Center",
+    "thresholds": "Selection Thresholds",
+    "aiModels": "AI Models",
+    "riskRules": "Risk Rules",
+    "save": "Save",
+    "saved": "Saved"
+  },
+  "footer": {
+    "lastUpdated": "Last updated",
+    "status": "Status",
+    "normal": "OK"
+  }
+}

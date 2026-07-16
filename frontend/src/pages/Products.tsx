@@ -1,23 +1,51 @@
 import { useEffect, useState } from "react";
 import { Table, Card, Select, Space, Button, Tag, InputNumber, Spin, Empty, message } from "antd";
-import { SyncOutlined } from "@ant-design/icons";
+import { SyncOutlined, GlobalOutlined } from "@ant-design/icons";
+import { useTranslation } from "react-i18next";
 import { getProducts, triggerSync, type ProductItem, type ProductListParams } from "../api/products";
 
 const riskColors: Record<string, string> = { danger: "red", warning: "orange", info: "blue" };
 
+const PLATFORM_SITES: Record<string, { value: string; label: string }[]> = {
+  amazon: [
+    { value: "US", label: "United States" },
+    { value: "JP", label: "Japan" },
+    { value: "DE", label: "Germany" },
+    { value: "GB", label: "United Kingdom" },
+    { value: "FR", label: "France" },
+    { value: "IT", label: "Italy" },
+    { value: "ES", label: "Spain" },
+    { value: "CA", label: "Canada" },
+    { value: "AU", label: "Australia" },
+  ],
+  tiktok: [
+    { value: "US", label: "United States" },
+    { value: "GB", label: "United Kingdom" },
+    { value: "JP", label: "Japan" },
+    { value: "ID", label: "Indonesia" },
+    { value: "TH", label: "Thailand" },
+    { value: "VN", label: "Vietnam" },
+    { value: "PH", label: "Philippines" },
+    { value: "MY", label: "Malaysia" },
+  ],
+};
+
 export default function Products() {
+  const { t } = useTranslation();
   const [data, setData] = useState<ProductItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [page, setPage] = useState(1);
+  const [platform, setPlatform] = useState<string>("amazon");
+  const [site, setSite] = useState<string>("US");
   const [filters, setFilters] = useState<ProductListParams>({ sort_by: "score", sort_order: "desc" });
 
   const loadData = async () => {
     setLoading(true);
     setError(false);
     try {
-      const res = await getProducts({ ...filters, page });
+      const res = await getProducts({ ...filters, platform, page });
       setData(res.items);
     } catch {
       setError(true);
@@ -26,15 +54,15 @@ export default function Products() {
     }
   };
 
-  useEffect(() => { loadData(); }, [page, filters]);
+  useEffect(() => { loadData(); }, [page, filters, platform]);
 
   const handleSync = async () => {
     setSyncing(true);
     try {
-      await triggerSync();
-      message.success("同步任务已提交");
+      await triggerSync({ platform, site });
+      message.success(t("products.syncSuccess"));
     } catch {
-      message.error("同步触发失败");
+      message.error(t("products.syncFailed"));
     } finally {
       setSyncing(false);
     }
@@ -42,27 +70,34 @@ export default function Products() {
 
   if (loading && data.length === 0) return <Spin size="large" />;
   if (error && data.length === 0) {
-    return <Empty description="数据加载失败"><a onClick={loadData}>点击重试</a></Empty>;
+    return <Empty description={t("products.loadFailed")}><a onClick={loadData}>{t("common.retry")}</a></Empty>;
   }
 
   const columns = [
-    { title: "标题", dataIndex: "title", key: "title", ellipsis: true, width: 280 },
-    { title: "品类", dataIndex: "category", key: "category", width: 100 },
-    { title: "月销量", dataIndex: "monthly_sales", key: "monthly_sales", width: 90, sorter: true },
-    { title: "价格", dataIndex: "price", key: "price", width: 80, render: (v: number | null) => v ? `$${(v / 100).toFixed(2)}` : "-" },
+    { title: t("products.title"), dataIndex: "title", key: "title", ellipsis: true, width: 280 },
     {
-      title: "综合评分", dataIndex: "comprehensive_score", key: "score", width: 100,
+      title: t("products.platform"), dataIndex: "platform", key: "platform", width: 90,
+      render: (v: string) => <Tag color={v === "tiktok" ? "magenta" : "orange"}>{(v || "amazon").toUpperCase()}</Tag>,
+    },
+    { title: t("products.category"), dataIndex: "category", key: "category", width: 120 },
+    { title: t("products.monthlySales"), dataIndex: "monthly_sales", key: "monthly_sales", width: 110, sorter: true },
+    {
+      title: t("products.price"), dataIndex: "price", key: "price", width: 80,
+      render: (v: number | null) => v ? `$${(v / 100).toFixed(2)}` : "-",
+    },
+    {
+      title: t("products.score"), dataIndex: "comprehensive_score", key: "score", width: 80,
       sorter: true, defaultSortOrder: "descend" as const,
       render: (v: number | null) => v ? <span style={{ color: "#52c41a", fontWeight: 600 }}>{v.toFixed(1)}</span> : "-",
     },
-    { title: "评论数", dataIndex: "review_count", key: "review_count", width: 80 },
+    { title: t("products.reviews"), dataIndex: "review_count", key: "review_count", width: 80 },
     {
-      title: "风险标签", dataIndex: "risk_tags", key: "risk_tags", width: 120,
+      title: t("products.risk"), dataIndex: "risk_tags", key: "risk_tags", width: 120,
       render: (tags: string[] | null) => tags?.length
-        ? tags.map((t) => <Tag key={t} color={riskColors.warning}>{t}</Tag>)
-        : <span style={{ color: "#8c8c8c" }}>无</span>,
+        ? tags.map((tag) => <Tag key={tag} color={riskColors.warning}>{tag}</Tag>)
+        : <span style={{ color: "#8c8c8c" }}>-</span>,
     },
-    { title: "匹配状态", dataIndex: "match_status", key: "match_status", width: 90 },
+    { title: t("products.match"), dataIndex: "match_status", key: "match_status", width: 90 },
   ];
 
   return (
@@ -70,30 +105,46 @@ export default function Products() {
       <Card style={{ marginBottom: 16 }}>
         <Space wrap>
           <Select
-            placeholder="品类筛选" allowClear style={{ width: 160 }}
+            value={platform}
+            style={{ width: 140 }}
+            onChange={(v) => { setPlatform(v); setSite("US"); setPage(1); }}
             options={[
-              { value: "3D printer filament", label: "3D打印耗材" },
-              { value: "sublimation ink", label: "热转印墨水" },
-              { value: "photo paper", label: "相纸" },
+              { value: "amazon", label: "Amazon" },
+              { value: "tiktok", label: "TikTok Shop" },
+            ]}
+          />
+          <Select
+            value={site}
+            style={{ width: 160 }}
+            onChange={(v) => { setSite(v); setPage(1); }}
+            options={PLATFORM_SITES[platform] || []}
+            suffixIcon={<GlobalOutlined />}
+          />
+          <Select
+            placeholder={t("products.category")} allowClear style={{ width: 170 }}
+            options={[
+              { value: "3D printer filament", label: t("products.categories.filament") },
+              { value: "sublimation ink", label: t("products.categories.ink") },
+              { value: "photo paper", label: t("products.categories.paper") },
             ]}
             onChange={(v) => { setPage(1); setFilters({ ...filters, category: v }); }}
           />
           <Select
-            placeholder="匹配状态" allowClear style={{ width: 120 }}
+            placeholder={t("products.matchStatus")} allowClear style={{ width: 150 }}
             options={[
-              { value: "pending", label: "待匹配" },
-              { value: "confirmed", label: "已确认" },
-              { value: "rejected", label: "已拒绝" },
+              { value: "pending", label: t("products.status.pending") },
+              { value: "confirmed", label: t("products.status.confirmed") },
+              { value: "rejected", label: t("products.status.rejected") },
             ]}
             onChange={(v) => { setPage(1); setFilters({ ...filters, match_status: v }); }}
           />
-          <span>最低评分：</span>
+          <span>{t("products.minScore")}:</span>
           <InputNumber
             placeholder="0" min={0} max={100} style={{ width: 80 }}
             onChange={(v) => { setPage(1); setFilters({ ...filters, min_score: v ?? undefined }); }}
           />
           <Button type="primary" icon={<SyncOutlined spin={syncing} />} loading={syncing} onClick={handleSync}>
-            同步数据
+            {t("common.sync")} {platform === "tiktok" ? "TikTok" : "Amazon"} {site}
           </Button>
         </Space>
       </Card>
@@ -108,9 +159,9 @@ export default function Products() {
           current: page,
           pageSize: 20,
           onChange: setPage,
-          showTotal: (total) => `共 ${total} 条`,
+          showTotal: (total) => `${t("common.total")} ${total} ${t("common.items")}`,
         }}
-        locale={{ emptyText: <Empty description="暂无符合产品，试试调整筛选条件" /> }}
+        locale={{ emptyText: <Empty description={t("products.empty")} /> }}
       />
     </div>
   );

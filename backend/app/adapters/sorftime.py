@@ -48,6 +48,12 @@ AMAZON_DOMAIN_MAP = {
 }
 ALI1688_DOMAIN = 601
 
+# TikTok 站点代码 -> domain 数字
+TIKTOK_DOMAIN_MAP = {
+    "US": 301, "MY": 303, "PH": 304, "VN": 305,
+    "TH": 306, "ID": 307, "GB": 309, "JP": 312,
+}
+
 
 def _to_float(v: Any) -> Optional[float]:
     if v is None:
@@ -111,11 +117,20 @@ class SorftimeAdapter:
 
     # ----- 站点映射 -----
     @staticmethod
-    def _domain(amz_site: str) -> int:
-        key = (amz_site or "").upper()
+    def _domain(site: str) -> int:
+        """解析 Amazon 站点代码为 domain 数字。"""
+        key = (site or "").upper()
         if key in AMAZON_DOMAIN_MAP:
             return AMAZON_DOMAIN_MAP[key]
-        raise BizError(ErrorCode.PARAM_INVALID, f"不支持的亚马逊站点: {amz_site}")
+        raise BizError(ErrorCode.PARAM_INVALID, f"不支持的亚马逊站点: {site}")
+
+    @staticmethod
+    def _tiktok_domain(site: str) -> int:
+        """解析 TikTok 站点代码为 domain 数字。"""
+        key = (site or "").upper()
+        if key in TIKTOK_DOMAIN_MAP:
+            return TIKTOK_DOMAIN_MAP[key]
+        raise BizError(ErrorCode.PARAM_INVALID, f"不支持的 TikTok 站点: {site}")
 
     # ----- 底层调用 -----
     @retry(
@@ -335,6 +350,50 @@ class SorftimeAdapter:
             delivery_type=cls._g(p, "ShippingType", "shippingType", "DeliveryType"),
             seller_country=d.seller_country,
             aplus=d.aplus,
+            raw=p,
+        )
+
+    # ===== TikTok 产品接口 =====
+
+    def tiktok_product_search(self, site: str, name: str, page: int = 1) -> list[ProductListItem]:
+        """TikTok 按名称搜索产品（ProductSearchFromName，消耗 5）。
+
+        site: TikTok 站点代码（US/JP/GB 等）
+        name: 产品关键词
+        返回统一 ProductListItem 列表（字段映射 TikTok -> 统一格式）。
+        """
+        domain = self._tiktok_domain(site)
+        raw = self._call("ProductSearchFromName", domain, {"Name": name, "Page": page})
+        data = self._data(raw)
+        if not isinstance(data, list):
+            return []
+        return [self._parse_tiktok_product(p) for p in data if isinstance(p, dict)]
+
+    @staticmethod
+    def _parse_tiktok_product(p: dict) -> ProductListItem:
+        """将 TikTok ProductSummeryObject 映射为统一 ProductListItem。
+
+        TikTok 字段差异：
+        - ProductId（非 asin）
+        - Price（非 SalesPrice），单位美元（非美分）
+        - MonthlySaleCount（非 ListingSalesVolumeOfMonth）
+        - ReviewCount（非 RatingsCount）
+        """
+        return ProductListItem(
+            asin=str(SorftimeAdapter._g(p, "ProductId", "productId") or ""),
+            parent_asin=None,
+            title=SorftimeAdapter._g(p, "Title", "title") or "",
+            image=SorftimeAdapter._g(p, "Image", "MainImage", "image"),
+            price=_to_float(SorftimeAdapter._g(p, "Price", "price")),
+            rating=_to_float(SorftimeAdapter._g(p, "Star", "Rating", "star", "rating")),
+            ratings_count=_to_int(SorftimeAdapter._g(p, "ReviewCount", "reviewCount")),
+            brand=SorftimeAdapter._g(p, "Brand", "brand"),
+            monthly_sales=_to_int(SorftimeAdapter._g(p, "MonthlySaleCount", "monthlySaleCount")),
+            monthly_revenue=_to_float(SorftimeAdapter._g(p, "MonthlySalesAmount", "monthlySalesAmount")),
+            potential_index=None,
+            delivery_type=None,
+            seller_country=SorftimeAdapter._g(p, "Location", "location"),
+            aplus=None,
             raw=p,
         )
 

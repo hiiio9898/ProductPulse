@@ -1,7 +1,7 @@
 """AI 大模型适配层（FR-03）。
 
 统一封装智谱 GLM 调用，支持：
-- 主力模型自动降级到备用模型（GLM-5.2 → GLM-5.1 → glm-4-flash）
+- 主力模型自动降级到备用模型（GLM-5.2 → GLM-4.7 → glm-4-flash）
 - 重试（tenacity 指数退避）+ 超时
 - 余额不足(1113)/限流(429) 时自动切换备用模型
 - 统一返回结构 + 耗时统计
@@ -59,7 +59,7 @@ class AIProvider:
     @staticmethod
     def _load_fallbacks() -> list[str]:
         """从 system_configs 加载备用模型列表（兜底用默认）。"""
-        defaults = ["glm-4-flash"]
+        defaults = ["glm-4.7", "glm-4-flash"]
         configured = settings.glm_model_fallback
         if configured and configured != settings.glm_model_primary:
             defaults.insert(0, configured)
