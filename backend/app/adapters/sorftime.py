@@ -87,7 +87,11 @@ class SorftimeAdapter:
     """Sorftime Standard API 适配层。"""
 
     def __init__(self, sk: Optional[str] = None, base_url: Optional[str] = None, redis_client: Any = None):
-        self.sk = sk if sk is not None else (settings.sorftime_api_sk or settings.sorftime_api_key)
+        raw_sk = sk if sk is not None else (settings.sorftime_api_sk or settings.sorftime_api_key)
+        # 支持逗号分隔多 key，额度不足时自动轮换
+        self.sk_list = [k.strip() for k in raw_sk.split(",") if k.strip()] if raw_sk else []
+        self.sk = self.sk_list[0] if self.sk_list else ""
+        self.sk_index = 0
         self.base_url = (base_url or settings.sorftime_api_base_url).rstrip("/")
         self.redis = redis_client
 
@@ -132,18 +136,23 @@ class SorftimeAdapter:
             return TIKTOK_DOMAIN_MAP[key]
         raise BizError(ErrorCode.PARAM_INVALID, f"不支持的 TikTok 站点: {site}")
 
+    # 额度不足的错误码（遇到则自动切换下一个 key）
+    QUOTA_ERROR_CODES = {694, 500, 501, 502}
+
+    def _next_key(self) -> bool:
+        """切换到下一个 key，返回是否还有可用 key。"""
+        if len(self.sk_list) <= 1:
+            return False
+        self.sk_index = (self.sk_index + 1) % len(self.sk_list)
+        self.sk = self.sk_list[self.sk_index]
+        logger.warning("Sorftime key 轮换", index=self.sk_index, key_prefix=self.sk[:8])
+        return self.sk_index != 0  # 轮了一圈回到 0 则表示全部试过
+
     # ----- 底层调用 -----
-    @retry(
-        retry=retry_if_exception_type(httpx.HTTPError),
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=1, max=8),
-        reraise=True,
-    )
     def _call(self, endpoint: str, domain: int, params: dict, use_cache: bool = True) -> dict:
         """统一请求入口：BasicAuth + POST + domain 参数。
 
-        返回 Sorftime 统一结构 {Code, Message, Data, RequestLeft, ...}。
-        Code != 0 时转 BizError。字段大小写兼容（Code/code 均认）。
+        支持多 key 轮换：遇到额度不足（694/500/501/502）自动切换下一个 key。
         """
         cache_key = self._cache_key(endpoint, domain, params)
         if use_cache:
@@ -152,36 +161,49 @@ class SorftimeAdapter:
                 logger.info("Sorftime 命中缓存", endpoint=endpoint, domain=domain)
                 return cached
 
-        if not self.sk:
+        if not self.sk_list:
             raise BizError(ErrorCode.API_FAILED, "Sorftime Account-SK 未配置")
 
         url = f"{self.base_url}/{endpoint}?domain={domain}"
-        headers = {
-            "Content-Type": "application/json;charset=UTF-8",
-            "Authorization": f"BasicAuth {self.sk}",
-        }
-        try:
-            with httpx.Client(timeout=DEFAULT_TIMEOUT) as client:
-                resp = client.post(url, headers=headers, json=params)
-                resp.raise_for_status()
-                data = resp.json()
-        except httpx.TimeoutException as e:
-            logger.error("Sorftime 调用超时", endpoint=endpoint)
-            raise BizError(ErrorCode.API_TIMEOUT, f"Sorftime 调用超时: {endpoint}") from e
-        except httpx.HTTPError as e:
-            logger.error("Sorftime 调用失败", endpoint=endpoint, error=str(e))
-            raise BizError(ErrorCode.API_FAILED, f"Sorftime 调用失败: {endpoint}") from e
+        max_attempts = len(self.sk_list)
 
-        # 业务码校验（大小写兼容）
-        code = data.get("Code", data.get("code", -1))
-        if code != 0:
+        for attempt in range(max_attempts):
+            headers = {
+                "Content-Type": "application/json;charset=UTF-8",
+                "Authorization": f"BasicAuth {self.sk}",
+            }
+            try:
+                with httpx.Client(timeout=DEFAULT_TIMEOUT) as client:
+                    resp = client.post(url, headers=headers, json=params)
+                    resp.raise_for_status()
+                    data = resp.json()
+            except httpx.TimeoutException as e:
+                logger.error("Sorftime 调用超时", endpoint=endpoint)
+                raise BizError(ErrorCode.API_TIMEOUT, f"Sorftime 调用超时: {endpoint}") from e
+            except httpx.HTTPError as e:
+                logger.error("Sorftime 调用失败", endpoint=endpoint, error=str(e))
+                raise BizError(ErrorCode.API_FAILED, f"Sorftime 调用失败: {endpoint}") from e
+
+            code = data.get("Code", data.get("code", -1))
+            if code == 0:
+                if use_cache:
+                    self._cache_set(cache_key, data)
+                return data
+
             msg = data.get("Message", data.get("message", "未知错误"))
+
+            # 额度不足 -> 尝试下一个 key
+            if code in self.QUOTA_ERROR_CODES and self._next_key():
+                logger.warning(
+                    "Sorftime 额度不足，切换 key 重试",
+                    endpoint=endpoint, code=code, msg=msg, attempt=attempt + 1,
+                )
+                continue
+
             self._handle_error_code(code, msg, endpoint)
             raise BizError(ErrorCode.API_FAILED, f"Sorftime {endpoint} 失败: {msg} (Code={code})")
 
-        if use_cache:
-            self._cache_set(cache_key, data)
-        return data
+        raise BizError(ErrorCode.API_FAILED, f"Sorftime {endpoint} 所有 key 额度均不足")
 
     @staticmethod
     def _data(raw: dict) -> Any:
