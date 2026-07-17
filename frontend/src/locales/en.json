@@ -101,5 +101,25 @@
     "lastUpdated": "Last updated",
     "status": "Status",
     "normal": "OK"
+  },
+  "compare": {
+    "title": "Cost & Profit Analysis",
+    "bestMatch": "1688 Best Match",
+    "costBreakdown": "Cost Breakdown (CNY)",
+    "profitUsd": "Profit (USD)",
+    "margin": "Margin",
+    "sellCny": "Sell (CNY)",
+    "fxRate": "FX Rate",
+    "purchase": "Purchase (1688)",
+    "shipping": "Intl Shipping",
+    "customs": "Customs Duty",
+    "commission": "Platform Fee",
+    "packaging": "Packaging",
+    "returnLoss": "Return Loss",
+    "totalCost": "Total Cost",
+    "noMatch": "No 1688 match found",
+    "compare": "Compare",
+    "failed": "Compare failed",
+    "similarity": "Similarity"
   }
 }

@@ -68,7 +68,7 @@ export default function Products() {
       setCompareData(data);
       setCompareOpen(true);
     } catch {
-      message.error("Compare failed");
+      message.error(t("compare.failed"));
     } finally {
       setComparingId(null);
     }
@@ -117,7 +117,7 @@ export default function Products() {
     },
     { title: t("products.match"), dataIndex: "match_status", key: "match_status", width: 90 },
     {
-      title: "Compare", key: "compare", width: 90,
+      title: t("compare.compare"), key: "compare", width: 90,
       render: (_: unknown, record: ProductItem) => (
         <Button size="small" icon={<SearchOutlined />} onClick={() => handleCompare(record.id)} loading={comparingId === record.id} />
       ),
@@ -189,7 +189,7 @@ export default function Products() {
       />
 
       <Modal
-        title="Cost & Profit Analysis"
+        title={t("compare.title")}
         open={compareOpen}
         onCancel={() => setCompareOpen(false)}
         footer={null}
@@ -199,14 +199,14 @@ export default function Products() {
           <div>
             {compareData.cost_breakdown && (
               <Row gutter={16} style={{ marginBottom: 16 }}>
-                <Col span={6}><Statistic title="Profit (USD)" value={compareData.gross_profit_usd ?? 0} prefix="$" valueStyle={{ color: (compareData.gross_profit_usd ?? 0) > 0 ? "#52c41a" : "#ff4d4f" }} /></Col>
-                <Col span={6}><Statistic title="Margin" value={compareData.profit_margin ?? 0} suffix="%" valueStyle={{ color: (compareData.profit_margin ?? 0) > 0 ? "#52c41a" : "#ff4d4f" }} /></Col>
-                <Col span={6}><Statistic title="Sell (CNY)" value={compareData.platform_price_cny ?? 0} prefix="¥" /></Col>
-                <Col span={6}><Statistic title="FX Rate" value={compareData.exchange_rate} /></Col>
+                <Col span={6}><Statistic title={t("compare.profitUsd")} value={compareData.gross_profit_usd ?? 0} prefix="$" valueStyle={{ color: (compareData.gross_profit_usd ?? 0) > 0 ? "#52c41a" : "#ff4d4f" }} /></Col>
+                <Col span={6}><Statistic title={t("compare.margin")} value={compareData.profit_margin ?? 0} suffix="%" valueStyle={{ color: (compareData.profit_margin ?? 0) > 0 ? "#52c41a" : "#ff4d4f" }} /></Col>
+                <Col span={6}><Statistic title={t("compare.sellCny")} value={compareData.platform_price_cny ?? 0} prefix="¥" /></Col>
+                <Col span={6}><Statistic title={t("compare.fxRate")} value={compareData.exchange_rate} /></Col>
               </Row>
             )}
             {compareData.best_match ? (
-              <Card size="small" title={`1688 Best Match (${compareData.best_match.similarity}%)`} style={{ marginBottom: 16 }}>
+              <Card size="small" title={`${t("compare.bestMatch")} (${compareData.best_match.similarity}%)`} style={{ marginBottom: 16 }}>
                 <p><strong>{compareData.best_match.title}</strong></p>
                 <Space>
                   <Tag color="orange">¥{compareData.best_match.price_cny} CNY</Tag>
@@ -214,16 +214,16 @@ export default function Products() {
                   <Tag>{compareData.best_match.store_name}</Tag>
                 </Space>
               </Card>
-            ) : <Empty description="No 1688 match" />}
+            ) : <Empty description={t("compare.noMatch")} />}
             {compareData.cost_breakdown && (
-              <Descriptions title="Cost Breakdown (CNY)" bordered size="small" column={2}>
-                <Descriptions.Item label="Purchase">¥{compareData.cost_breakdown.purchase_price}</Descriptions.Item>
-                <Descriptions.Item label="Intl Shipping">¥{compareData.cost_breakdown.international_shipping}</Descriptions.Item>
-                <Descriptions.Item label="Customs (5%)">¥{compareData.cost_breakdown.customs_duty}</Descriptions.Item>
-                <Descriptions.Item label="Platform Fee (8%)">¥{compareData.cost_breakdown.platform_commission}</Descriptions.Item>
-                <Descriptions.Item label="Packaging">¥{compareData.cost_breakdown.packaging}</Descriptions.Item>
-                <Descriptions.Item label="Return Loss (3%)">¥{compareData.cost_breakdown.return_loss}</Descriptions.Item>
-                <Descriptions.Item label="Total Cost" span={2}><strong>¥{compareData.cost_breakdown.total_cost} (${compareData.cost_breakdown.total_cost_usd})</strong></Descriptions.Item>
+              <Descriptions title={t("compare.costBreakdown")} bordered size="small" column={2}>
+                <Descriptions.Item label={t("compare.purchase")}>¥{compareData.cost_breakdown.purchase_price}</Descriptions.Item>
+                <Descriptions.Item label={t("compare.shipping")}>¥{compareData.cost_breakdown.international_shipping}</Descriptions.Item>
+                <Descriptions.Item label={t("compare.customs") + " (5%)"}>¥{compareData.cost_breakdown.customs_duty}</Descriptions.Item>
+                <Descriptions.Item label={t("compare.commission") + " (8%)"}>¥{compareData.cost_breakdown.platform_commission}</Descriptions.Item>
+                <Descriptions.Item label={t("compare.packaging")}>¥{compareData.cost_breakdown.packaging}</Descriptions.Item>
+                <Descriptions.Item label={t("compare.returnLoss") + " (3%)"}>¥{compareData.cost_breakdown.return_loss}</Descriptions.Item>
+                <Descriptions.Item label={t("compare.totalCost")} span={2}><strong>¥{compareData.cost_breakdown.total_cost} (${compareData.cost_breakdown.total_cost_usd})</strong></Descriptions.Item>
               </Descriptions>
             )}
           </div>

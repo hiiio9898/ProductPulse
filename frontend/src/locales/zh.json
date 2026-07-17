@@ -101,5 +101,25 @@
     "lastUpdated": "数据更新时间",
     "status": "运行状态",
     "normal": "正常"
+  },
+  "compare": {
+    "title": "成本利润分析",
+    "bestMatch": "1688 最佳匹配",
+    "costBreakdown": "成本明细（人民币）",
+    "profitUsd": "毛利润（美元）",
+    "margin": "毛利率",
+    "sellCny": "售价（人民币）",
+    "fxRate": "汇率",
+    "purchase": "拿货价（1688）",
+    "shipping": "国际物流",
+    "customs": "关税",
+    "commission": "平台佣金",
+    "packaging": "包装费",
+    "returnLoss": "退货损耗",
+    "totalCost": "总成本",
+    "noMatch": "未找到 1688 匹配货源",
+    "compare": "比价",
+    "failed": "比价失败",
+    "similarity": "相似度"
   }
 }
