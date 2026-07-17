@@ -39,6 +39,7 @@ ProductPulse/
 | 落地页/营销页设计 | design-taste-frontend | **仅限**项目落地页、介绍页、营销类页面设计；该 skill 自述「不适用于 dashboard/数据表/多步产品 UI」，故看板与配置中心页面仍用上一行 skill |
 | Python 工程规范 | `python-skills` | 后端代码模式、异步、类型注解、错误处理、测试 |
 | 文档协同 | `doc-coauthoring` | 多份设计文档的协同撰写与重构 |
+| 阶段性总结与文档同步 | `project-summary` | 用户说「阶段性总结/整理文档/总结进度」时触发，自动更新 STAGE_SUMMARY.md / SETUP.md / README.md / Handoff/TODO.md，保证换机可复现、文档与代码同源 |
 
 > 说明：以上 Skills 在当前 Codex 环境中已全局可用（位于 `~/.codex/skills` 与 `~/.agents/skills`）。本 AGENTS.md 的作用是将它们「绑定」到本项目作用域，使在本仓库工作时自动优先激活。
 
@@ -60,4 +61,5 @@ ProductPulse/
 
 - v1.0（2026-07-15）：初版拆分整理 + 首轮评审修订（格式修复 + 内容补全）。
 - v1.1（2026-07-15）：第二轮增强，详见 `项目开发文档/README.md` 修订历史。
+- v1.3（2026-07-17）：新增 project-summary skill（阶段性总结触发器），绑定到本仓库作用域。
 - v1.2（2026-07-16）：Skills 表新增 design-taste-frontend（落地页/营销页设计），并注明其不适用于看板/数据表类 UI 的边界。同日补充 webapp-testing + playwright（前端验收测试）。
