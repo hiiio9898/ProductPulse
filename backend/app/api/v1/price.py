@@ -9,7 +9,7 @@ PUT  /api/v1/price/confirm/{product_id} - 确认/拒绝 1688 关联
 
 from datetime import date
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -121,16 +121,34 @@ async def check_price(product_id: int, db: Session = Depends(get_db), _: bool = 
 
 
 @router.get("/price/compare/{product_id}")
-async def compare_product(product_id: int, db: Session = Depends(get_db), _: bool = AuthRequired):
-    """实时比价：返回完整成本明细 + 利润核算。
-
-    包含：1688拿货价、国际物流、关税、平台佣金、包装费、退货损耗、总成本、毛利、毛利率。
-    """
+async def compare_product(
+    product_id: int,
+    force: bool = Query(default=False),
+    db: Session = Depends(get_db),
+    _: bool = AuthRequired,
+):
+    """比价：优先返回最近一次缓存，force=true 强制刷新（消耗 API 额度）。"""
     product = db.get(Product, product_id)
     if not product or product.deleted_at:
         raise BizError(ErrorCode.NOT_FOUND, "Product not found")
 
+    # 非强制刷新时，先查最近一次快照
+    if not force:
+        cached = db.execute(
+            select(PriceSnapshot)
+            .where(PriceSnapshot.product_id == product_id)
+            .order_by(PriceSnapshot.snapshot_date.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+
+        if cached and cached.total_cost is not None:
+            return ok_response(data=_snapshot_to_compare_dict(cached, product), message="cached")
+
+    # 实时比价（消耗 API 额度）
     result = price_compare_service.compare(product, top_n=3)
+    # 保存到数据库
+    price_compare_service.record_snapshot(db, product, result, date.today())
+    db.commit()
 
     data = {
         "product_id": product_id,
@@ -227,3 +245,46 @@ async def price_alerts(db: Session = Depends(get_db), _: bool = AuthRequired):
                 })
 
     return ok_response({"items": alerts, "total": len(alerts)})
+
+
+def _snapshot_to_compare_dict(snap, product) -> dict:
+    """把缓存的 PriceSnapshot 转为比价结果 dict（免消耗 API）。"""
+    data = {
+        "product_id": snap.product_id,
+        "platform": product.platform,
+        "exchange_rate": float(snap.exchange_rate) if snap.exchange_rate else None,
+        "platform_price_usd": float(snap.price_platform) / float(snap.exchange_rate) if snap.price_platform and snap.exchange_rate else None,
+        "platform_price_cny": float(snap.price_platform) if snap.price_platform else None,
+        "search_keyword_cn": snap.search_keyword_cn or "",
+        "best_match": None,
+        "candidates": [],
+        "cost_breakdown": None,
+        "gross_profit_cny": None,
+        "gross_profit_usd": float(snap.estimated_profit) if snap.estimated_profit else None,
+        "profit_margin": float(snap.profit_margin) if snap.profit_margin else None,
+        "snapshot_date": str(snap.snapshot_date),
+        "cached": True,
+    }
+    if snap.matched_title:
+        data["best_match"] = {
+            "source_id": "",
+            "title": snap.matched_title,
+            "price_cny": float(snap.price_1688) if snap.price_1688 else None,
+            "price_usd": round(float(snap.price_1688) / float(snap.exchange_rate), 2) if snap.price_1688 and snap.exchange_rate else None,
+            "similarity": float(snap.similarity) if snap.similarity else None,
+            "store_name": "",
+        }
+    if snap.total_cost:
+        data["cost_breakdown"] = {
+            "purchase_price": float(snap.price_1688) if snap.price_1688 else 0,
+            "international_shipping": float(snap.cost_shipping) if snap.cost_shipping else 0,
+            "customs_duty": float(snap.cost_customs) if snap.cost_customs else 0,
+            "platform_commission": float(snap.cost_commission) if snap.cost_commission else 0,
+            "packaging": float(snap.cost_packaging) if snap.cost_packaging else 0,
+            "return_loss": float(snap.cost_return_loss) if snap.cost_return_loss else 0,
+            "total_cost": float(snap.total_cost),
+            "total_cost_usd": round(float(snap.total_cost) / float(snap.exchange_rate), 2) if snap.exchange_rate else None,
+        }
+        sell_cny = float(snap.price_platform) if snap.price_platform else 0
+        data["gross_profit_cny"] = round(sell_cny - float(snap.total_cost), 2)
+    return data

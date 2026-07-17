@@ -120,6 +120,10 @@
     "noMatch": "未找到 1688 匹配货源",
     "compare": "比价",
     "failed": "比价失败",
-    "similarity": "相似度"
+    "similarity": "相似度",
+    "cached": "缓存",
+    "refresh": "刷新比价",
+    "refreshed": "比价已刷新",
+    "snapshotDate": "快照日期"
   }
 }

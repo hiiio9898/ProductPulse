@@ -199,6 +199,7 @@ class PriceCompareService:
         if prev_price and prev_price > 0:
             change_pct = round((new_price_cny - prev_price) / prev_price * 100, 2)
 
+        cost = result.cost
         snapshot = PriceSnapshot(
             product_id=product.id,
             price_1688=new_price_cny,
@@ -208,6 +209,16 @@ class PriceCompareService:
             price_platform_previous=float(prev.price_platform) if prev and prev.price_platform else None,
             estimated_profit=result.gross_profit_usd,
             profit_margin=result.profit_margin,
+            cost_shipping=cost.international_shipping if cost else None,
+            cost_customs=cost.customs_duty if cost else None,
+            cost_commission=cost.platform_commission if cost else None,
+            cost_packaging=cost.packaging if cost else None,
+            cost_return_loss=cost.return_loss if cost else None,
+            total_cost=cost.total_cost if cost else None,
+            matched_title=result.best_match.title if result.best_match else None,
+            search_keyword_cn=result.search_keyword_cn or None,
+            similarity=result.best_match.similarity if result.best_match else None,
+            exchange_rate=result.exchange_rate,
             snapshot_date=snapshot_date,
         )
         db.add(snapshot)

@@ -32,5 +32,19 @@ class PriceSnapshot(Base):
     estimated_profit: Mapped[Optional[float]] = mapped_column(Numeric(10, 2))
     profit_margin: Mapped[Optional[float]] = mapped_column(Numeric(5, 2))
 
+    # 完整成本明细（CNY）
+    cost_shipping: Mapped[Optional[float]] = mapped_column(Numeric(10, 2))
+    cost_customs: Mapped[Optional[float]] = mapped_column(Numeric(10, 2))
+    cost_commission: Mapped[Optional[float]] = mapped_column(Numeric(10, 2))
+    cost_packaging: Mapped[Optional[float]] = mapped_column(Numeric(10, 2))
+    cost_return_loss: Mapped[Optional[float]] = mapped_column(Numeric(10, 2))
+    total_cost: Mapped[Optional[float]] = mapped_column(Numeric(10, 2))
+
+    # 匹配详情
+    matched_title: Mapped[Optional[str]] = mapped_column(String(500))
+    search_keyword_cn: Mapped[Optional[str]] = mapped_column(String(200))
+    similarity: Mapped[Optional[float]] = mapped_column(Numeric(5, 2))
+    exchange_rate: Mapped[Optional[float]] = mapped_column(Numeric(10, 4))
+
     snapshot_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     created_at: Mapped[date] = mapped_column(server_default=func.now())

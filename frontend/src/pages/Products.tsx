@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Table, Card, Select, Space, Button, Tag, InputNumber, Spin, Empty, message, Modal, Descriptions, Statistic, Row, Col } from "antd";
-import { SyncOutlined, GlobalOutlined, SearchOutlined } from "@ant-design/icons";
+import { SyncOutlined, GlobalOutlined, SearchOutlined, ReloadOutlined } from "@ant-design/icons";
 import { useTranslation } from "react-i18next";
 import { getProducts, triggerSync, type ProductItem, type ProductListParams } from "../api/products";
 import { compareProduct, type CompareResult } from "../api/price";
@@ -60,9 +60,12 @@ export default function Products() {
   const [comparingId, setComparingId] = useState<number | null>(null);
   const [compareData, setCompareData] = useState<CompareResult | null>(null);
   const [compareOpen, setCompareOpen] = useState(false);
+  const [compareProductId, setCompareProductId] = useState<number | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const handleCompare = async (id: number) => {
     setComparingId(id);
+    setCompareProductId(id);
     try {
       const data = await compareProduct(id);
       setCompareData(data);
@@ -71,6 +74,20 @@ export default function Products() {
       message.error(t("compare.failed"));
     } finally {
       setComparingId(null);
+    }
+  };
+
+  const handleRefreshCompare = async () => {
+    if (!compareProductId) return;
+    setRefreshing(true);
+    try {
+      const data = await compareProduct(compareProductId, true);
+      setCompareData(data);
+      message.success(t("compare.refreshed"));
+    } catch {
+      message.error(t("compare.failed"));
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -189,7 +206,25 @@ export default function Products() {
       />
 
       <Modal
-        title={t("compare.title")}
+        title={
+          <Space>
+            <span>{t("compare.title")}</span>
+            {compareData?.cached && (
+              <Tag color="default">
+                {t("compare.cached")} {compareData.snapshot_date ? `· ${compareData.snapshot_date}` : ""}
+              </Tag>
+            )}
+            <Button
+              size="small"
+              type="link"
+              icon={<ReloadOutlined spin={refreshing} />}
+              onClick={handleRefreshCompare}
+              loading={refreshing}
+            >
+              {t("compare.refresh")}
+            </Button>
+          </Space>
+        }
         open={compareOpen}
         onCancel={() => setCompareOpen(false)}
         footer={null}

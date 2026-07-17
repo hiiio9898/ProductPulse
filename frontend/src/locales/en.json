@@ -120,6 +120,10 @@
     "noMatch": "No 1688 match found",
     "compare": "Compare",
     "failed": "Compare failed",
-    "similarity": "Similarity"
+    "similarity": "Similarity",
+    "cached": "Cached",
+    "refresh": "Refresh",
+    "refreshed": "Compare refreshed",
+    "snapshotDate": "Snapshot date"
   }
 }

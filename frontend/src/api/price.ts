@@ -1,4 +1,4 @@
-import request from "./index";
+﻿import request from "./index";
 
 export interface MatchCandidate {
   source_id: string;
@@ -66,7 +66,11 @@ export interface CompareResult {
   gross_profit_cny: number | null;
   gross_profit_usd: number | null;
   profit_margin: number | null;
+  snapshot_date?: string;
+  cached?: boolean;
 }
 
-export const compareProduct = (productId: number) =>
-  request.get<{ data: CompareResult }>(`/price/compare/${productId}`).then((r) => r.data.data);
+export const compareProduct = (productId: number, force: boolean = false) =>
+  request
+    .get<{ data: CompareResult }>(`/price/compare/${productId}`, { params: { force } })
+    .then((r) => r.data.data);
