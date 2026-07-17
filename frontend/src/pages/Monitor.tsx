@@ -81,6 +81,7 @@ export default function Monitor() {
           <Table dataSource={alerts} columns={columns} rowKey="product_id" size="middle" pagination={false} />
         )}
       </Card>
+
     </div>
   );
 }

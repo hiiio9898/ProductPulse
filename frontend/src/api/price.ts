@@ -41,3 +41,32 @@ export const refreshAllPrices = () =>
 
 export const getPriceAlerts = () =>
   request.get<{ data: { items: PriceAlert[]; total: number } }>("/price/alerts").then((r) => r.data.data);
+
+export interface CostBreakdown {
+  purchase_price: number;
+  international_shipping: number;
+  customs_duty: number;
+  platform_commission: number;
+  packaging: number;
+  return_loss: number;
+  total_cost: number;
+  total_cost_usd: number;
+}
+
+export interface CompareResult {
+  product_id: number;
+  platform: string;
+  exchange_rate: number;
+  platform_price_usd: number | null;
+  platform_price_cny: number | null;
+  search_keyword_cn: string;
+  best_match: { source_id: string; title: string; price_cny: number; price_usd: number; similarity: number; store_name: string } | null;
+  candidates: { source_id: string; title: string; price_cny: number; price_usd: number; similarity: number; store_name: string }[];
+  cost_breakdown: CostBreakdown | null;
+  gross_profit_cny: number | null;
+  gross_profit_usd: number | null;
+  profit_margin: number | null;
+}
+
+export const compareProduct = (productId: number) =>
+  request.get<{ data: CompareResult }>(`/price/compare/${productId}`).then((r) => r.data.data);

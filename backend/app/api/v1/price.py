@@ -118,6 +118,72 @@ async def check_price(product_id: int, db: Session = Depends(get_db), _: bool = 
     })
 
 
+
+
+@router.get("/price/compare/{product_id}")
+async def compare_product(product_id: int, db: Session = Depends(get_db), _: bool = AuthRequired):
+    """实时比价：返回完整成本明细 + 利润核算。
+
+    包含：1688拿货价、国际物流、关税、平台佣金、包装费、退货损耗、总成本、毛利、毛利率。
+    """
+    product = db.get(Product, product_id)
+    if not product or product.deleted_at:
+        raise BizError(ErrorCode.NOT_FOUND, "Product not found")
+
+    result = price_compare_service.compare(product, top_n=3)
+
+    data = {
+        "product_id": product_id,
+        "platform": product.platform,
+        "exchange_rate": result.exchange_rate,
+        "platform_price_usd": result.platform_price_usd,
+        "platform_price_cny": result.platform_price_cny,
+        "search_keyword_cn": result.search_keyword_cn,
+        "best_match": None,
+        "candidates": [],
+        "cost_breakdown": None,
+        "gross_profit_cny": result.gross_profit_cny,
+        "gross_profit_usd": result.gross_profit_usd,
+        "profit_margin": result.profit_margin,
+    }
+
+    if result.best_match:
+        data["best_match"] = {
+            "source_id": result.best_match.source_id,
+            "title": result.best_match.title,
+            "price_cny": result.best_match.price_cny,
+            "price_usd": result.best_match.price_usd,
+            "similarity": result.best_match.similarity,
+            "store_name": result.best_match.store_name,
+        }
+        data["candidates"] = [
+            {
+                "source_id": m.source_id,
+                "title": m.title,
+                "price_cny": m.price_cny,
+                "price_usd": m.price_usd,
+                "similarity": m.similarity,
+                "store_name": m.store_name,
+            }
+            for m in result.matches
+        ]
+
+    if result.cost:
+        c = result.cost
+        data["cost_breakdown"] = {
+            "purchase_price": c.purchase_price,
+            "international_shipping": c.international_shipping,
+            "customs_duty": c.customs_duty,
+            "platform_commission": c.platform_commission,
+            "packaging": c.packaging,
+            "return_loss": c.return_loss,
+            "total_cost": c.total_cost,
+            "total_cost_usd": c.total_cost_usd,
+        }
+
+    return ok_response(data=data)
+
+
 @router.post("/price/refresh-all")
 async def refresh_all(_: bool = AuthRequired):
     """手动刷新所有关联产品价格（异步任务）。"""

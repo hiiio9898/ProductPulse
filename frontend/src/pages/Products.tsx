@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Table, Card, Select, Space, Button, Tag, InputNumber, Spin, Empty, message } from "antd";
-import { SyncOutlined, GlobalOutlined } from "@ant-design/icons";
+import { Table, Card, Select, Space, Button, Tag, InputNumber, Spin, Empty, message, Modal, Descriptions, Statistic, Row, Col } from "antd";
+import { SyncOutlined, GlobalOutlined, SearchOutlined } from "@ant-design/icons";
 import { useTranslation } from "react-i18next";
 import { getProducts, triggerSync, type ProductItem, type ProductListParams } from "../api/products";
+import { compareProduct, type CompareResult } from "../api/price";
 
 const riskColors: Record<string, string> = { danger: "red", warning: "orange", info: "blue" };
 
@@ -37,7 +38,7 @@ export default function Products() {
   const [error, setError] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [page, setPage] = useState(1);
-  const [platform, setPlatform] = useState<string>("amazon");
+  const [platform, setPlatform] = useState<string>("tiktok");
   const [site, setSite] = useState<string>("US");
   const [filters, setFilters] = useState<ProductListParams>({ sort_by: "score", sort_order: "desc" });
 
@@ -55,6 +56,23 @@ export default function Products() {
   };
 
   useEffect(() => { loadData(); }, [page, filters, platform]);
+
+  const [comparingId, setComparingId] = useState<number | null>(null);
+  const [compareData, setCompareData] = useState<CompareResult | null>(null);
+  const [compareOpen, setCompareOpen] = useState(false);
+
+  const handleCompare = async (id: number) => {
+    setComparingId(id);
+    try {
+      const data = await compareProduct(id);
+      setCompareData(data);
+      setCompareOpen(true);
+    } catch {
+      message.error("Compare failed");
+    } finally {
+      setComparingId(null);
+    }
+  };
 
   const handleSync = async () => {
     setSyncing(true);
@@ -98,6 +116,12 @@ export default function Products() {
         : <span style={{ color: "#8c8c8c" }}>-</span>,
     },
     { title: t("products.match"), dataIndex: "match_status", key: "match_status", width: 90 },
+    {
+      title: "Compare", key: "compare", width: 90,
+      render: (_: unknown, record: ProductItem) => (
+        <Button size="small" icon={<SearchOutlined />} onClick={() => handleCompare(record.id)} loading={comparingId === record.id} />
+      ),
+    },
   ];
 
   return (
@@ -163,6 +187,48 @@ export default function Products() {
         }}
         locale={{ emptyText: <Empty description={t("products.empty")} /> }}
       />
+
+      <Modal
+        title="Cost & Profit Analysis"
+        open={compareOpen}
+        onCancel={() => setCompareOpen(false)}
+        footer={null}
+        width={720}
+      >
+        {compareData ? (
+          <div>
+            {compareData.cost_breakdown && (
+              <Row gutter={16} style={{ marginBottom: 16 }}>
+                <Col span={6}><Statistic title="Profit (USD)" value={compareData.gross_profit_usd ?? 0} prefix="$" valueStyle={{ color: (compareData.gross_profit_usd ?? 0) > 0 ? "#52c41a" : "#ff4d4f" }} /></Col>
+                <Col span={6}><Statistic title="Margin" value={compareData.profit_margin ?? 0} suffix="%" valueStyle={{ color: (compareData.profit_margin ?? 0) > 0 ? "#52c41a" : "#ff4d4f" }} /></Col>
+                <Col span={6}><Statistic title="Sell (CNY)" value={compareData.platform_price_cny ?? 0} prefix="¥" /></Col>
+                <Col span={6}><Statistic title="FX Rate" value={compareData.exchange_rate} /></Col>
+              </Row>
+            )}
+            {compareData.best_match ? (
+              <Card size="small" title={`1688 Best Match (${compareData.best_match.similarity}%)`} style={{ marginBottom: 16 }}>
+                <p><strong>{compareData.best_match.title}</strong></p>
+                <Space>
+                  <Tag color="orange">¥{compareData.best_match.price_cny} CNY</Tag>
+                  <Tag color="blue">${compareData.best_match.price_usd} USD</Tag>
+                  <Tag>{compareData.best_match.store_name}</Tag>
+                </Space>
+              </Card>
+            ) : <Empty description="No 1688 match" />}
+            {compareData.cost_breakdown && (
+              <Descriptions title="Cost Breakdown (CNY)" bordered size="small" column={2}>
+                <Descriptions.Item label="Purchase">¥{compareData.cost_breakdown.purchase_price}</Descriptions.Item>
+                <Descriptions.Item label="Intl Shipping">¥{compareData.cost_breakdown.international_shipping}</Descriptions.Item>
+                <Descriptions.Item label="Customs (5%)">¥{compareData.cost_breakdown.customs_duty}</Descriptions.Item>
+                <Descriptions.Item label="Platform Fee (8%)">¥{compareData.cost_breakdown.platform_commission}</Descriptions.Item>
+                <Descriptions.Item label="Packaging">¥{compareData.cost_breakdown.packaging}</Descriptions.Item>
+                <Descriptions.Item label="Return Loss (3%)">¥{compareData.cost_breakdown.return_loss}</Descriptions.Item>
+                <Descriptions.Item label="Total Cost" span={2}><strong>¥{compareData.cost_breakdown.total_cost} (${compareData.cost_breakdown.total_cost_usd})</strong></Descriptions.Item>
+              </Descriptions>
+            )}
+          </div>
+        ) : <Spin />}
+      </Modal>
     </div>
   );
 }

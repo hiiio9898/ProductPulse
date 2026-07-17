@@ -93,8 +93,8 @@ def sync_sorftime_daily(
 
         logger.info("数据同步完成", **stats)
 
-        # 同步后自动为高分产品做 1688 匹配（仅 Amazon 产品，填充监控页数据）
-        if pf == "amazon" and stats["synced"] > 0:
+        # 同步后自动为高分产品做 1688 匹配（所有平台，填充监控页数据）
+        if stats["synced"] > 0:
             try:
                 auto_match_count = _auto_match_1688(db, today, top_n=20)
                 stats["auto_matched"] = auto_match_count
@@ -122,7 +122,6 @@ def _auto_match_1688(db, data_date, top_n=20):
     products = db.execute(
         select(Product).where(
             Product.deleted_at.is_(None),
-            Product.platform == "amazon",
             Product.match_status == "pending",
             Product.comprehensive_score.isnot(None),
         ).order_by(Product.comprehensive_score.desc()).limit(top_n)

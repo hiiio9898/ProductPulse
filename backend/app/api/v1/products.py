@@ -136,7 +136,7 @@ async def weekly_recommendations(db: Session = Depends(get_db), _: bool = AuthRe
 
 @router.post("/products/sync")
 async def trigger_sync(
-    platform: str = Query(default="amazon", pattern="^(amazon|tiktok)$"),
+    platform: str = Query(default="tiktok", pattern="^(amazon|tiktok)$"),
     site: str = Query(default="US"),
     category: str | None = Query(default=None),
     _: bool = AuthRequired,
