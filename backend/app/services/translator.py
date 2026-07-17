@@ -8,7 +8,10 @@
 import re
 from typing import Optional
 
-from app.adapters.ai_provider import ai_provider
+from app.adapters.ai_provider import AIProvider
+
+# 翻译专用：直接用 glm-4-flash（快速、不限流）
+_translator_ai = AIProvider(primary="glm-4-flash", fallbacks=["glm-4-flash"])
 from app.core.logging import get_logger
 
 logger = get_logger("services.translator")
@@ -55,11 +58,14 @@ def _glm_translate(title: str) -> Optional[str]:
         f"Title: {title}"
     )
     try:
-        result = ai_provider.chat(
+        # 翻译直接用 glm-4-flash（快速且不限流，不走 5.2 降级链）
+        result = _translator_ai.chat(
             [{"role": "user", "content": prompt}],
             temperature=0.1,
             max_tokens=100,
+            task_id=None,  # 不记录重试进度（翻译是辅助功能）
         )
+        # 如果返回的模型不是 flash，说明走了降级，无所谓
         if result.success and result.content:
             cleaned = result.content.strip().strip("\"").strip("'")
             logger.info("GLM translate OK", original=title[:40], translated=cleaned)
