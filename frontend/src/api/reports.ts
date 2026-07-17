@@ -19,3 +19,14 @@ export const getReportByDate = (date: string) =>
 
 export const triggerGenerate = (date?: string, force: boolean = false) =>
   request.post<{ data: { task_id: string } }>("/reports/generate", null, { params: { report_date: date, force } }).then((r) => r.data.data);
+
+export interface GenerateProgress {
+  status: "pending" | "retrying" | "success" | "failed" | "unknown";
+  model?: string;
+  attempt?: number;
+  max_retries?: number;
+  message?: string;
+}
+
+export const getGenerateProgress = (taskId: string) =>
+  request.get<{ data: GenerateProgress }>(`/reports/generate/progress/${taskId}`).then((r) => r.data.data);

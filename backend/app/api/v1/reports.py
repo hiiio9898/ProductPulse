@@ -63,6 +63,21 @@ async def get_report_by_date(report_date: str, db: Session = Depends(get_db), _:
     return ok_response(data=_report_to_dict(report))
 
 
+
+
+@router.get("/reports/generate/progress/{task_id}")
+async def get_generate_progress(task_id: str, _: bool = AuthRequired):
+    """查询日报生成进度（用于前端轮询重试状态）。"""
+    import json
+    from app.core.database import redis_client
+    if not redis_client:
+        return ok_response(data={"status": "unknown", "message": "Redis unavailable"})
+    raw = redis_client.get(f"ai:report:{task_id}")
+    if not raw:
+        return ok_response(data={"status": "pending", "message": "Waiting..."})
+    return ok_response(data=json.loads(raw))
+
+
 @router.post("/reports/generate")
 async def trigger_generate(
     report_date: str | None = None,

@@ -1,12 +1,10 @@
 """AI 大模型适配层（FR-03）。
 
 统一封装智谱 GLM 调用，支持：
-- 主力模型自动降级到备用模型（GLM-5.2 → GLM-4.7 → glm-4-flash）
-- 重试（tenacity 指数退避）+ 超时
-- 余额不足(1113)/限流(429) 时自动切换备用模型
+- 主力模型自动降级到备用模型（GLM-5.2 -> GLM-4.7 -> glm-4-flash）
+- 429 限流自动重试（指数退避，最多 6 次），重试进度写入 Redis 供前端查询
+- 余额不足(1113)/无资源包(1301) 时切换备用模型
 - 统一返回结构 + 耗时统计
-
-外部 API 异常转为本系统错误码 2001/2002。
 """
 
 import time
@@ -14,12 +12,6 @@ from dataclasses import dataclass
 from typing import Optional
 
 import httpx
-from tenacity import (
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
 
 from app.core.config import settings
 from app.core.logging import get_logger
@@ -29,6 +21,7 @@ logger = get_logger("adapters.ai_provider")
 
 GLM_API_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
 DEFAULT_TIMEOUT = 60
+MAX_RATE_LIMIT_RETRIES = 6
 
 
 @dataclass
@@ -40,49 +33,67 @@ class AIResult:
     elapsed_ms: int
     success: bool
     error: Optional[str] = None
+    retries: int = 0
 
 
 class InsufficientBalanceError(Exception):
-    """余额不足或限流，应切换备用模型。"""
+    """余额不足或无资源包，应切换备用模型。"""
+
+
+class RateLimitError(Exception):
+    """429 限流，应等待后重试当前模型。"""
+
+    def __init__(self, model: str, message: str = ""):
+        self.model = model
+        self.message = message
+        super().__init__(f"{model}: {message}")
+
+
+def _report_retry_progress(task_id, model: str, attempt: int, max_retries: int):
+    """将重试进度写入 Redis，供前端轮询。"""
+    if not task_id:
+        return
+    try:
+        from app.core.database import redis_client
+        if redis_client:
+            import json
+            progress = {
+                "status": "retrying",
+                "model": model,
+                "attempt": attempt,
+                "max_retries": max_retries,
+                "message": f"Model {model} rate limited, retrying ({attempt}/{max_retries})...",
+            }
+            redis_client.setex(f"ai:report:{task_id}", 300, json.dumps(progress))
+    except Exception:
+        pass
 
 
 class AIProvider:
     """智谱 GLM 统一适配层。"""
 
-    def __init__(self, api_key: Optional[str] = None,
-                 primary: Optional[str] = None,
-                 fallbacks: Optional[list[str]] = None):
+    def __init__(self, api_key=None, primary=None, fallbacks=None):
         self.api_key = api_key or settings.glm_api_key
         self.primary = primary or settings.glm_model_primary
         self.fallbacks = fallbacks or self._load_fallbacks()
 
     @staticmethod
-    def _load_fallbacks() -> list[str]:
-        """从 system_configs 加载备用模型列表（兜底用默认）。"""
+    def _load_fallbacks():
         defaults = ["glm-4.7", "glm-4-flash"]
         configured = settings.glm_model_fallback
         if configured and configured != settings.glm_model_primary:
             defaults.insert(0, configured)
-        # 主力放最前，去重
         chain = [settings.glm_model_primary] + defaults
         seen = set()
         return [m for m in chain if not (m in seen or seen.add(m))]
 
-    def _model_chain(self) -> list[str]:
-        """返回主力→备用的模型尝试顺序。"""
+    def _model_chain(self):
         chain = [self.primary] + self.fallbacks
         seen = set()
         return [m for m in chain if not (m in seen or seen.add(m))]
 
-    @retry(
-        retry=retry_if_exception_type(httpx.HTTPError),
-        stop=stop_after_attempt(2),
-        wait=wait_exponential(multiplier=1, min=1, max=4),
-        reraise=True,
-    )
-    def _call_single(self, model: str, messages: list[dict],
-                     temperature: float, max_tokens: int) -> str:
-        """调用单个模型。余额不足抛 InsufficientBalanceError 触发切换。"""
+    def _call_single(self, model, messages, temperature, max_tokens, task_id=None):
+        """调用单个模型。429 重试，1113 降级。"""
         headers = {"Authorization": f"Bearer {self.api_key}"}
         payload = {
             "model": model,
@@ -90,66 +101,88 @@ class AIProvider:
             "temperature": temperature,
             "max_tokens": max_tokens,
         }
-        try:
-            with httpx.Client(timeout=DEFAULT_TIMEOUT) as client:
-                resp = client.post(GLM_API_URL, headers=headers, json=payload)
-        except httpx.TimeoutException as e:
-            raise BizError(ErrorCode.API_TIMEOUT, f"GLM 调用超时: {model}") from e
-        except httpx.HTTPError as e:
-            logger.error("GLM 网络错误", model=model, error=str(e))
-            raise
 
-        body = resp.json()
+        for attempt in range(1, MAX_RATE_LIMIT_RETRIES + 1):
+            try:
+                with httpx.Client(timeout=DEFAULT_TIMEOUT) as client:
+                    resp = client.post(GLM_API_URL, headers=headers, json=payload)
+            except httpx.TimeoutException as e:
+                raise BizError(ErrorCode.API_TIMEOUT, f"GLM timeout: {model}") from e
+            except httpx.HTTPError as e:
+                logger.error("GLM network error", model=model, error=str(e))
+                raise
 
-        # 余额不足 / 限流 → 切换备用模型
-        if resp.status_code == 429 or body.get("error", {}).get("code") in ("1113", "1301"):
-            err_msg = body.get("error", {}).get("message", "")
-            raise InsufficientBalanceError(f"{model}: {err_msg}")
+            body = {}
+            try:
+                body = resp.json()
+            except Exception:
+                pass
 
-        if resp.status_code != 200 or "error" in body:
-            err_msg = body.get("error", {}).get("message", f"HTTP {resp.status_code}")
-            raise BizError(ErrorCode.API_FAILED, f"GLM 调用失败: {err_msg}")
+            err_code = str(body.get("error", {}).get("code", "")) if isinstance(body, dict) else ""
+            err_msg = body.get("error", {}).get("message", "") if isinstance(body, dict) else ""
 
-        return body.get("choices", [{}])[0].get("message", {}).get("content", "")
+            # 429 限流 -> 重试
+            if resp.status_code == 429:
+                if attempt < MAX_RATE_LIMIT_RETRIES:
+                    wait_sec = min(2 ** attempt, 8)
+                    logger.warning("GLM rate limited, retrying",
+                                   model=model, attempt=attempt,
+                                   max_retries=MAX_RATE_LIMIT_RETRIES, wait=wait_sec)
+                    _report_retry_progress(task_id, model, attempt, MAX_RATE_LIMIT_RETRIES)
+                    time.sleep(wait_sec)
+                    continue
+                raise RateLimitError(model, f"Retried {MAX_RATE_LIMIT_RETRIES} times")
 
-    def chat(self, messages: list[dict], temperature: float = 0.7,
-             max_tokens: int = 2000) -> AIResult:
-        """统一调用入口：主力失败自动降级到备用模型。"""
+            # 余额不足 -> 降级
+            if err_code in ("1113", "1301"):
+                raise InsufficientBalanceError(f"{model}: {err_msg}")
+
+            if resp.status_code != 200 or (isinstance(body, dict) and "error" in body):
+                raise BizError(ErrorCode.API_FAILED, f"GLM failed: {err_msg or resp.status_code}")
+
+            return body.get("choices", [{}])[0].get("message", {}).get("content", "")
+
+        raise RateLimitError(model, "Max retries exhausted")
+
+    def chat(self, messages, temperature=0.7, max_tokens=2000, task_id=None):
+        """统一调用入口。429 重试同一模型，余额不足降级。"""
         if not self.api_key:
-            raise BizError(ErrorCode.API_FAILED, "GLM API Key 未配置")
+            raise BizError(ErrorCode.API_FAILED, "GLM API Key not configured")
 
         start = time.time()
         chain = self._model_chain()
+        total_retries = 0
 
         for i, model in enumerate(chain):
             try:
-                content = self._call_single(model, messages, temperature, max_tokens)
+                content = self._call_single(model, messages, temperature, max_tokens, task_id=task_id)
                 elapsed = int((time.time() - start) * 1000)
-                logger.info("AI 调用成功", model=model, elapsed_ms=elapsed, fallback_used=(i > 0))
-                return AIResult(
-                    content=content, model_used=model,
-                    elapsed_ms=elapsed, success=True,
-                )
+                logger.info("AI success", model=model, elapsed_ms=elapsed, fallback_used=(i > 0))
+                return AIResult(content=content, model_used=model,
+                                elapsed_ms=elapsed, success=True, retries=total_retries)
             except InsufficientBalanceError as e:
-                logger.warning("模型不可用，切换备用", model=model, error=str(e))
+                logger.warning("Model insufficient balance, switching", model=model, error=str(e))
                 if i == len(chain) - 1:
-                    # 最后一个也失败
                     elapsed = int((time.time() - start) * 1000)
-                    return AIResult(
-                        content="", model_used=model, elapsed_ms=elapsed,
-                        success=False, error=f"所有模型均余额不足: {e}",
-                    )
+                    return AIResult(content="", model_used=model, elapsed_ms=elapsed,
+                                    success=False, error=f"All models insufficient balance: {e}")
+                continue
+            except RateLimitError as e:
+                logger.warning("Model rate limited after retries, switching", model=model, error=str(e))
+                total_retries += MAX_RATE_LIMIT_RETRIES
+                if i == len(chain) - 1:
+                    elapsed = int((time.time() - start) * 1000)
+                    return AIResult(content="", model_used=model, elapsed_ms=elapsed,
+                                    success=False, error=f"All models rate limited: {e}")
                 continue
             except BizError:
                 raise
             except Exception as e:
-                logger.error("AI 调用异常", model=model, error=str(e))
+                logger.error("AI error", model=model, error=str(e))
                 if i == len(chain) - 1:
-                    raise BizError(ErrorCode.API_FAILED, f"AI 调用失败: {e}")
+                    raise BizError(ErrorCode.API_FAILED, f"AI failed: {e}")
 
-        # 理论上不会到这里
-        raise BizError(ErrorCode.API_FAILED, "AI 调用失败：无可用模型")
+        raise BizError(ErrorCode.API_FAILED, "AI failed: no available model")
 
 
-# 单例
 ai_provider = AIProvider()

@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
-import { Card, Button, DatePicker, Spin, Empty, Tag, Space, message, Typography } from "antd";
+import { useEffect, useState, useRef } from "react";
+import { Card, Button, DatePicker, Spin, Empty, Tag, Space, message, Typography, Alert } from "antd";
 import { ReloadOutlined } from "@ant-design/icons";
 import ReactMarkdown from "react-markdown";
 import dayjs from "dayjs";
 import { useTranslation } from "react-i18next";
-import { getReportByDate, triggerGenerate, type DailyReportData } from "../api/reports";
+import { getReportByDate, triggerGenerate, getGenerateProgress, type DailyReportData, type GenerateProgress } from "../api/reports";
 
 const { Text } = Typography;
 
@@ -14,13 +14,15 @@ export default function Reports() {
   const [date, setDate] = useState(dayjs());
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [progress, setProgress] = useState<GenerateProgress | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const sections = [
+  const sections = report ? [
     { key: "recommendations", title: t("reports.recommendations"), color: "#52c41a" },
     { key: "trend_analysis", title: t("reports.trendAnalysis"), color: "#1890ff" },
     { key: "risk_alerts", title: t("reports.riskAlerts"), color: "#ff4d4f" },
     { key: "action_suggestions", title: t("reports.actionSuggestions"), color: "#faad14" },
-  ] as const;
+  ] as const : [];
 
   const loadReport = async (d: dayjs.Dayjs) => {
     setLoading(true);
@@ -34,17 +36,44 @@ export default function Reports() {
     }
   };
 
+  const stopPolling = () => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  };
+
+  const startPolling = (taskId: string) => {
+    stopPolling();
+    pollRef.current = setInterval(async () => {
+      try {
+        const prog = await getGenerateProgress(taskId);
+        setProgress(prog);
+        if (prog.status === "success" || prog.status === "failed") {
+          stopPolling();
+          setGenerating(false);
+          if (prog.status === "success") {
+            message.success(t("reports.title") + " OK");
+            loadReport(date);
+          } else {
+            message.error(prog.message || "Failed");
+          }
+        }
+      } catch { /* ignore */ }
+    }, 2000);
+  };
+
   useEffect(() => { loadReport(date); }, [date]);
+  useEffect(() => () => stopPolling(), []);
 
   const handleRegenerate = async () => {
     setGenerating(true);
+    setProgress({ status: "pending", message: "Submitting..." });
     try {
-      await triggerGenerate(date.format("YYYY-MM-DD"), true);
-      message.success(t("reports.generating"));
-      setTimeout(() => loadReport(date), 5000);
+      const result = await triggerGenerate(date.format("YYYY-MM-DD"), true);
+      startPolling(result.task_id);
     } catch {
       message.error(t("reports.empty"));
-    } finally {
       setGenerating(false);
     }
   };
@@ -61,6 +90,23 @@ export default function Reports() {
           </Button>
         </Space>
       </Card>
+
+      {generating && progress && (
+        <Card style={{ marginBottom: 16 }}>
+          {progress.status === "retrying" ? (
+            <Alert
+              type="warning"
+              showIcon
+              message={`${t("reports.generating")} - ${progress.model || ""}`}
+              description={`Rate limited, retrying (${progress.attempt}/${progress.max_retries})... Please wait.`}
+            />
+          ) : progress.status === "pending" ? (
+            <Alert type="info" showIcon message={progress.message || t("reports.generating")} />
+          ) : progress.status === "failed" ? (
+            <Alert type="error" showIcon message={progress.message || "Failed"} />
+          ) : null}
+        </Card>
+      )}
 
       {report ? (
         <>

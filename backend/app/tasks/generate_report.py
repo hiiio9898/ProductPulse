@@ -15,6 +15,20 @@ from app.services.prompt_builder import build_daily_report_prompt
 from app.models.daily_report import DailyReport
 from app.models.operation_log import OperationLog
 
+def _update_progress(task_id, status, model=None, message=""):
+    """更新日报生成进度到 Redis。"""
+    if not task_id:
+        return
+    try:
+        from app.core.database import redis_client
+        if redis_client:
+            import json
+            progress = {"status": status, "model": model or "", "message": message}
+            redis_client.setex(f"ai:report:{task_id}", 300, json.dumps(progress))
+    except Exception:
+        pass
+
+
 logger = get_logger("tasks.generate_report")
 
 
@@ -41,9 +55,10 @@ def generate_daily_report(self, target_date: str | None = None) -> dict:
         messages = build_daily_report_prompt(db, report_date)
 
         # 调用 AI（主力 → 备用自动切换）
-        result = ai_provider.chat(messages, temperature=0.7, max_tokens=2000)
+        result = ai_provider.chat(messages, temperature=0.7, max_tokens=2000, task_id=self.request.id)
 
         if not result.success:
+            _update_progress(self.request.id, "failed", result.model_used, result.error or "Failed")
             logger.error("AI 日报生成失败", error=result.error)
             _log_operation(db, report_date, "failed", result.error, int((time.time() - start) * 1000))
             db.commit()
@@ -72,6 +87,7 @@ def generate_daily_report(self, target_date: str | None = None) -> dict:
         _log_operation(db, report_date, "success", None, result.elapsed_ms, result.model_used)
         db.commit()
 
+        _update_progress(self.request.id, "success", result.model_used, "Report generated")
         logger.info("AI 日报生成完成", date=str(report_date), model=result.model_used, ms=result.elapsed_ms)
         return {
             "status": "success", "date": str(report_date), "id": report.id,

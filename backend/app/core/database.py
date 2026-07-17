@@ -31,3 +31,12 @@ def get_db() -> Generator[Session, None, None]:
         yield db
     finally:
         db.close()
+
+
+# ---------- Redis 客户端（进度反馈、缓存等）----------
+try:
+    import redis as _redis
+    redis_client = _redis.from_url(settings.redis_url, decode_responses=True)
+    redis_client.ping()
+except Exception:
+    redis_client = None
