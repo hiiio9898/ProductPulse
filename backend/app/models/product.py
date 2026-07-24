@@ -21,6 +21,7 @@ class Product(Base):
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     category: Mapped[Optional[str]] = mapped_column(String(100), index=True)
     platform: Mapped[str] = mapped_column(String(20), default="amazon")
+    site: Mapped[str] = mapped_column(String(10), default="US", index=True)
 
     # Sorftime 核心字段
     monthly_sales: Mapped[Optional[int]] = mapped_column(Integer)

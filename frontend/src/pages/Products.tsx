@@ -46,7 +46,7 @@ export default function Products() {
     setLoading(true);
     setError(false);
     try {
-      const res = await getProducts({ ...filters, platform, page });
+      const res = await getProducts({ ...filters, platform, site, page });
       setData(res.items);
     } catch {
       setError(true);
@@ -55,7 +55,7 @@ export default function Products() {
     }
   };
 
-  useEffect(() => { loadData(); }, [page, filters, platform]);
+  useEffect(() => { loadData(); }, [page, filters, platform, site]);
 
   const [comparingId, setComparingId] = useState<number | null>(null);
   const [compareData, setCompareData] = useState<CompareResult | null>(null);
@@ -113,6 +113,10 @@ export default function Products() {
     {
       title: t("products.platform"), dataIndex: "platform", key: "platform", width: 90,
       render: (v: string) => <Tag color={v === "tiktok" ? "magenta" : "orange"}>{(v || "amazon").toUpperCase()}</Tag>,
+    },
+    {
+      title: t("products.site"), dataIndex: "site", key: "site", width: 70,
+      render: (v: string) => v ? <Tag>{v}</Tag> : "-",
     },
     { title: t("products.category"), dataIndex: "category", key: "category", width: 120 },
     { title: t("products.monthlySales"), dataIndex: "monthly_sales", key: "monthly_sales", width: 110, sorter: true },

@@ -5,6 +5,7 @@ export interface ProductItem {
   sorftime_id: string;
   title: string;
   platform: string;
+  site: string;
   category: string | null;
   monthly_sales: number | null;
   price: number | null;
@@ -17,6 +18,7 @@ export interface ProductItem {
 
 export interface ProductListParams {
   platform?: string;
+  site?: string;
   category?: string;
   match_status?: string;
   min_score?: number;

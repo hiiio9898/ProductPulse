@@ -40,6 +40,8 @@ async def list_products(
 
     if platform:
         query = query.where(Product.platform == platform)
+    if site:
+        query = query.where(Product.site == site)
     if category:
         query = query.where(Product.category == category)
     if match_status:
@@ -63,6 +65,7 @@ async def list_products(
             "sorftime_id": p.sorftime_id,
             "title": p.title,
             "platform": p.platform,
+            "site": p.site,
             "category": p.category,
             "monthly_sales": p.monthly_sales,
             "price": float(p.price) if p.price else None,
@@ -89,6 +92,7 @@ async def get_product(product_id: int, db: Session = Depends(get_db), _: bool = 
         "title": product.title,
         "category": product.category,
         "platform": product.platform,
+        "site": product.site,
         "monthly_sales": product.monthly_sales,
         "price": float(product.price) if product.price else None,
         "listing_monopoly": float(product.listing_monopoly) if product.listing_monopoly else None,

@@ -67,7 +67,7 @@ def sync_sorftime_daily(
 
                 for item in items:
                     try:
-                        product = _upsert_product_sync_impl(db, item, today, category=cat, platform=pf)
+                        product = _upsert_product_sync_impl(db, item, today, category=cat, platform=pf, site=current_site)
 
                         record_daily_metrics_sync(
                             db, product.id, today,
@@ -184,7 +184,7 @@ def load_active_rules_sync(db) -> list[RiskRule]:
     ).scalars().all())
 
 
-def _upsert_product_sync_impl(db, item, data_date, category=None, platform="amazon"):
+def _upsert_product_sync_impl(db, item, data_date, category=None, platform="amazon", site="US"):
     """同步版 upsert（直接复用同步 session）。"""
     from sqlalchemy import select
     from app.models.product import Product
@@ -195,12 +195,13 @@ def _upsert_product_sync_impl(db, item, data_date, category=None, platform="amaz
     ).scalar_one_or_none()
 
     if product is None:
-        product = Product(sorftime_id=sorftime_id, title=item.title or "", data_date=data_date, platform=platform)
+        product = Product(sorftime_id=sorftime_id, title=item.title or "", data_date=data_date, platform=platform, site=site)
         db.add(product)
 
     product.title = item.title or product.title
     product.category = category or product.category
     product.platform = platform
+    product.site = site
     product.monthly_sales = item.monthly_sales
     product.price = item.price
     product.review_count = item.ratings_count

@@ -28,7 +28,7 @@
   },
   "products": {
     "platform": "平台",
-    "site": "站点",
+    "site": "地区",
     "category": "品类",
     "matchStatus": "匹配状态",
     "minScore": "最低评分",
