@@ -17,6 +17,7 @@ from app.core.response import BizError, ErrorCode, ok_response
 from app.core.security import AuthRequired
 from app.models.product import Product
 from app.models.recommendation import Recommendation
+from app.models.product_metrics_daily import ProductMetricsDaily
 
 router = APIRouter(tags=["products"])
 
@@ -83,13 +84,65 @@ async def list_products(
     return ok_response({"items": items, "page": page, "page_size": page_size})
 
 
+@router.get("/products/export/csv")
+async def export_products_csv(
+    platform: str | None = Query(default=None, pattern="^(amazon|tiktok)$"),
+    site: str | None = Query(default=None),
+    category: str | None = Query(default=None),
+    match_status: str | None = Query(default=None),
+    min_score: float | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+    _: bool = AuthRequired,
+):
+    """导出当前筛选下的产品为 CSV。"""
+    import csv
+    from fastapi.responses import Response
+
+    query = select(Product).where(Product.deleted_at.is_(None))
+    if platform:
+        query = query.where(Product.platform == platform)
+    if site:
+        query = query.where(Product.site == site)
+    if category:
+        query = query.where(Product.category == category)
+    if match_status:
+        query = query.where(Product.match_status == match_status)
+    if keyword:
+        query = query.where(Product.title.ilike(f"%{keyword}%"))
+    if min_score is not None:
+        query = query.where(Product.comprehensive_score >= min_score)
+    query = query.order_by(Product.comprehensive_score.desc().nullslast()).limit(500)
+
+    products = db.execute(query).scalars().all()
+
+    import io as _io
+    buf = _io.StringIO()
+    buf.write("\ufeff")  # BOM for Excel UTF-8
+    writer = csv.writer(buf)
+    writer.writerow(["ID", "Title", "Platform", "Site", "Category", "MonthlySales", "Price", "Reviews", "Score", "MatchStatus", "DataDate"])
+    for p in products:
+        writer.writerow([
+            p.id, p.title, p.platform, p.site, p.category,
+            p.monthly_sales, float(p.price) if p.price else "",
+            p.review_count, float(p.comprehensive_score) if p.comprehensive_score else "",
+            p.match_status, str(p.data_date) if p.data_date else "",
+        ])
+
+    return Response(
+        content=buf.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=products.csv"},
+    )
+
+
 @router.get("/products/{product_id}")
 async def get_product(product_id: int, db: Session = Depends(get_db), _: bool = AuthRequired):
     """获取单个产品详情。"""
     product = db.get(Product, product_id)
     if not product or product.deleted_at:
         raise BizError(ErrorCode.NOT_FOUND, "产品不存在")
-    return ok_response(data={
+    data = {
         "id": product.id,
         "sorftime_id": product.sorftime_id,
         "title": product.title,
@@ -109,7 +162,26 @@ async def get_product(product_id: int, db: Session = Depends(get_db), _: bool = 
         "risk_tags": product.risk_tags,
         "match_status": product.match_status,
         "data_date": str(product.data_date) if product.data_date else None,
-    })
+    }
+
+    # 历史价格/销量序列（最近 30 条）
+    history_rows = db.execute(
+        select(ProductMetricsDaily)
+        .where(ProductMetricsDaily.product_id == product_id)
+        .order_by(ProductMetricsDaily.metric_date.asc())
+        .limit(30)
+    ).scalars().all()
+    data["metrics_history"] = [
+        {
+            "date": str(r.metric_date),
+            "monthly_sales": r.monthly_sales,
+            "price": float(r.price) if r.price else None,
+            "review_count": r.review_count,
+        }
+        for r in history_rows
+    ]
+
+    return ok_response(data=data)
 
 
 @router.get("/products/recommendations/weekly")

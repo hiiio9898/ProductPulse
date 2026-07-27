@@ -75,7 +75,11 @@
     "pending": "Pending Match",
     "topScore": "Top Score",
     "trends": "7-Day Trends",
-    "noProduct": "No top product yet"
+    "noProduct": "No top product yet",
+    "date": "Date",
+    "productCount": "Products",
+    "avgSales": "Avg Monthly Sales",
+    "topProduct": "TOP 1 Product"
   },
   "reports": {
     "title": "AI Daily Report",

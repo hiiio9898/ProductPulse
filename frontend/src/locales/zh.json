@@ -75,7 +75,11 @@
     "pending": "待匹配",
     "topScore": "最高评分",
     "trends": "7天趋势",
-    "noProduct": "暂无高分产品"
+    "noProduct": "暂无高分产品",
+    "date": "日期",
+    "productCount": "产品数",
+    "avgSales": "平均月销量",
+    "topProduct": "TOP1 产品"
   },
   "reports": {
     "title": "AI 日报",

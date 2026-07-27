@@ -63,16 +63,16 @@ export default function Dashboard() {
             pagination={false}
             size="small"
             columns={[
-              { title: t("footer.lastUpdated"), dataIndex: "date", key: "date" },
-              { title: t("products.title"), dataIndex: "product_count", key: "product_count" },
-              { title: t("products.monthlySales"), dataIndex: "avg_sales", key: "avg_sales" },
+              { title: t("dashboard.date"), dataIndex: "date", key: "date" },
+              { title: t("dashboard.productCount"), dataIndex: "product_count", key: "product_count" },
+              { title: t("dashboard.avgSales"), dataIndex: "avg_sales", key: "avg_sales" },
             ]}
           />
         )}
       </Card>
 
       {overview?.top_product_title && (
-        <Card title={`TOP1`} style={{ marginTop: 16 }}>
+        <Card title={t("dashboard.topProduct")} style={{ marginTop: 16 }}>
           {overview.top_product_title}
         </Card>
       )}

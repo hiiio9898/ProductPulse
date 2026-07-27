@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Table, Card, Select, Space, Button, Tag, InputNumber, Input, Spin, Empty, message, Modal, Descriptions, Statistic, Row, Col, Progress } from "antd";
-import { SyncOutlined, GlobalOutlined, SearchOutlined, ReloadOutlined } from "@ant-design/icons";
+import { Table, Card, Select, Space, Button, Tag, InputNumber, Input, Spin, Empty, message, Modal, Descriptions, Statistic, Row, Col, Progress, Drawer } from "antd";
+import { SyncOutlined, GlobalOutlined, SearchOutlined, ReloadOutlined, EyeOutlined, DownloadOutlined } from "@ant-design/icons";
 import { useRef } from "react";
-import { useTranslation } from "react-i18next";
-import { getProducts, triggerSync, getSyncStatus, type ProductItem, type ProductListParams, type SyncStatus } from "../api/products";
-import { compareProduct, type CompareResult } from "../api/price";
+import Sparkline from "../components/Sparkline";
 import { formatPrice } from "../utils/price";
+import { useTranslation } from "react-i18next";
+import { getProducts, triggerSync, getSyncStatus, getProductDetail, exportProductsCsv, type ProductItem, type ProductListParams, type SyncStatus, type ProductDetail } from "../api/products";
+import { compareProduct, type CompareResult } from "../api/price";
 
 const riskColors: Record<string, string> = { danger: "red", warning: "orange", info: "blue" };
 
@@ -39,6 +40,10 @@ export default function Products() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [detail, setDetail] = useState<ProductDetail | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [syncProgress, setSyncProgress] = useState<SyncStatus | null>(null);
   const [keyword, setKeyword] = useState("");
   const syncPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -94,6 +99,31 @@ export default function Products() {
       message.error(t("compare.failed"));
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      await exportProductsCsv({ ...filters, platform, site, keyword: keyword || undefined });
+      message.success(t("products.exportDone", { defaultValue: "已导出" }));
+    } catch {
+      message.error(t("products.loadFailed"));
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleViewDetail = async (id: number) => {
+    setDetailLoading(true);
+    setDetailOpen(true);
+    try {
+      const d = await getProductDetail(id);
+      setDetail(d);
+    } catch {
+      message.error(t("products.loadFailed"));
+    } finally {
+      setDetailLoading(false);
     }
   };
 
@@ -165,7 +195,13 @@ export default function Products() {
     },
     { title: t("products.match"), dataIndex: "match_status", key: "match_status", width: 90 },
     {
-      title: t("compare.compare"), key: "compare", width: 90,
+      title: t("products.detail", { defaultValue: "详情" }), key: "detail", width: 60,
+      render: (_: unknown, record: ProductItem) => (
+        <Button size="small" icon={<EyeOutlined />} onClick={() => handleViewDetail(record.id)} />
+      ),
+    },
+    {
+      title: t("compare.compare"), key: "compare", width: 60,
       render: (_: unknown, record: ProductItem) => (
         <Button size="small" icon={<SearchOutlined />} onClick={() => handleCompare(record.id)} loading={comparingId === record.id} />
       ),
@@ -225,6 +261,9 @@ export default function Products() {
           <Button type="primary" icon={<SyncOutlined spin={syncing} />} loading={syncing} onClick={handleSync}>
             {t("common.sync")} {platform === "tiktok" ? "TikTok" : "Amazon"} {site}
           </Button>
+          <Button icon={<DownloadOutlined />} loading={exporting} onClick={handleExport}>
+            {t("products.export", { defaultValue: "导出" })}
+          </Button>
         </Space>
       </Card>
 
@@ -255,6 +294,54 @@ export default function Products() {
         }}
         locale={{ emptyText: <Empty description={t("products.empty")} /> }}
       />
+
+      <Drawer
+        title={detail?.title}
+        open={detailOpen}
+        onClose={() => { setDetailOpen(false); setDetail(null); }}
+        width={560}
+      >
+        {detailLoading ? <Spin /> : detail ? (
+          <div>
+            <Space wrap style={{ marginBottom: 16 }}>
+              <Tag color={detail.platform === "tiktok" ? "magenta" : "orange"}>{(detail.platform || "amazon").toUpperCase()}</Tag>
+              {detail.site && <Tag>{detail.site}</Tag>}
+              {detail.category && <Tag color="blue">{detail.category}</Tag>}
+              <Tag color={detail.match_status === "confirmed" ? "green" : "default"}>{detail.match_status}</Tag>
+            </Space>
+            {detail.comprehensive_score && (
+              <Row gutter={16} style={{ marginBottom: 16 }}>
+                <Col span={8}><Statistic title={t("products.score")} value={detail.comprehensive_score} precision={1} valueStyle={{ color: "#52c41a", fontWeight: 600 }} /></Col>
+                <Col span={8}><Statistic title={t("products.price")} value={formatPrice(detail.price, detail.platform).replace("$","")} prefix="$" /></Col>
+                <Col span={8}><Statistic title={t("products.monthlySales")} value={detail.monthly_sales ?? 0} /></Col>
+              </Row>
+            )}
+            <Descriptions title={t("products.metrics", { defaultValue: "指标详情" })} bordered size="small" column={2} style={{ marginBottom: 16 }}>
+              <Descriptions.Item label={t("products.reviews")}>{detail.review_count ?? "-"}</Descriptions.Item>
+              <Descriptions.Item label="Seller Count">{detail.seller_count ?? "-"}</Descriptions.Item>
+              <Descriptions.Item label="Listing Monopoly">{detail.listing_monopoly != null ? `${detail.listing_monopoly}%` : "-"}</Descriptions.Item>
+              <Descriptions.Item label="Brand Monopoly">{detail.brand_monopoly != null ? `${detail.brand_monopoly}%` : "-"}</Descriptions.Item>
+              <Descriptions.Item label="Seller Monopoly">{detail.seller_monopoly != null ? `${detail.seller_monopoly}%` : "-"}</Descriptions.Item>
+              <Descriptions.Item label="New Product Ratio">{detail.new_product_ratio != null ? `${detail.new_product_ratio}%` : "-"}</Descriptions.Item>
+            </Descriptions>
+            {detail.risk_tags && detail.risk_tags.length > 0 && (
+              <Card size="small" title={t("products.risk")} style={{ marginBottom: 16 }}>
+                <Space wrap>{detail.risk_tags.map((tag) => <Tag key={tag} color="orange">{tag}</Tag>)}</Space>
+              </Card>
+            )}
+            <Card size="small" title={t("products.priceTrend", { defaultValue: "价格走势(近30天)" })} style={{ marginBottom: 16 }}>
+              {detail.metrics_history.length >= 2 ? (
+                <Sparkline data={detail.metrics_history.map((m) => m.price)} width={480} height={64} />
+              ) : <span style={{ color: "#bfbfbf" }}>{t("monitor.empty")}</span>}
+            </Card>
+            <Card size="small" title={t("products.salesTrend", { defaultValue: "销量走势" })}>
+              {detail.metrics_history.length >= 2 ? (
+                <Sparkline data={detail.metrics_history.map((m) => m.monthly_sales)} width={480} height={64} color="#52c41a" />
+              ) : <span style={{ color: "#bfbfbf" }}>{t("monitor.empty")}</span>}
+            </Card>
+          </div>
+        ) : <Empty />}
+      </Drawer>
 
       <Modal
         title={
