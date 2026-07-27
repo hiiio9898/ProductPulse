@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { Table, Card, Select, Space, Button, Tag, InputNumber, Spin, Empty, message, Modal, Descriptions, Statistic, Row, Col } from "antd";
+import { Table, Card, Select, Space, Button, Tag, InputNumber, Input, Spin, Empty, message, Modal, Descriptions, Statistic, Row, Col, Progress } from "antd";
 import { SyncOutlined, GlobalOutlined, SearchOutlined, ReloadOutlined } from "@ant-design/icons";
+import { useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { getProducts, triggerSync, type ProductItem, type ProductListParams } from "../api/products";
+import { getProducts, triggerSync, getSyncStatus, type ProductItem, type ProductListParams, type SyncStatus } from "../api/products";
 import { compareProduct, type CompareResult } from "../api/price";
+import { formatPrice } from "../utils/price";
 
 const riskColors: Record<string, string> = { danger: "red", warning: "orange", info: "blue" };
 
@@ -37,6 +39,9 @@ export default function Products() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [syncProgress, setSyncProgress] = useState<SyncStatus | null>(null);
+  const [keyword, setKeyword] = useState("");
+  const syncPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [page, setPage] = useState(1);
   const [platform, setPlatform] = useState<string>("tiktok");
   const [site, setSite] = useState<string>("US");
@@ -46,7 +51,7 @@ export default function Products() {
     setLoading(true);
     setError(false);
     try {
-      const res = await getProducts({ ...filters, platform, site, page });
+      const res = await getProducts({ ...filters, platform, site, keyword: keyword || undefined, page });
       setData(res.items);
     } catch {
       setError(true);
@@ -55,7 +60,8 @@ export default function Products() {
     }
   };
 
-  useEffect(() => { loadData(); }, [page, filters, platform, site]);
+  useEffect(() => { loadData(); }, [page, filters, platform, site, keyword]);
+  useEffect(() => () => stopSyncPolling(), []);
 
   const [comparingId, setComparingId] = useState<number | null>(null);
   const [compareData, setCompareData] = useState<CompareResult | null>(null);
@@ -91,14 +97,35 @@ export default function Products() {
     }
   };
 
+  const stopSyncPolling = () => {
+    if (syncPollRef.current) { clearInterval(syncPollRef.current); syncPollRef.current = null; }
+  };
+
   const handleSync = async () => {
     setSyncing(true);
+    setSyncProgress({ state: "PENDING", message: "提交中..." });
     try {
-      await triggerSync({ platform, site });
-      message.success(t("products.syncSuccess"));
+      const res = await triggerSync({ platform, site });
+      syncPollRef.current = setInterval(async () => {
+        try {
+          const st = await getSyncStatus(res.task_id);
+          setSyncProgress(st);
+          if (st.done || st.state === "SUCCESS" || st.state === "FAILURE") {
+            stopSyncPolling();
+            setSyncing(false);
+            if (st.state === "SUCCESS") {
+              const n = st.result?.synced ?? 0;
+              const errs = st.result?.errors ?? 0;
+              message.success(t("products.syncDone", { n, errs, defaultValue: `同步完成: ${n} 条，失败 ${errs}` }));
+              loadData();
+            } else {
+              message.error(st.error || t("products.syncFailed"));
+            }
+          }
+        } catch { /* ignore */ }
+      }, 2000);
     } catch {
       message.error(t("products.syncFailed"));
-    } finally {
       setSyncing(false);
     }
   };
@@ -122,7 +149,7 @@ export default function Products() {
     { title: t("products.monthlySales"), dataIndex: "monthly_sales", key: "monthly_sales", width: 110, sorter: true },
     {
       title: t("products.price"), dataIndex: "price", key: "price", width: 80,
-      render: (v: number | null) => v ? `$${(v / 100).toFixed(2)}` : "-",
+      render: (v: number | null, record: ProductItem) => formatPrice(v, record.platform),
     },
     {
       title: t("products.score"), dataIndex: "comprehensive_score", key: "score", width: 80,
@@ -174,6 +201,13 @@ export default function Products() {
             ]}
             onChange={(v) => { setPage(1); setFilters({ ...filters, category: v }); }}
           />
+          <Input.Search
+            placeholder={t("products.searchPlaceholder", { defaultValue: "搜索标题" })}
+            allowClear style={{ width: 200 }}
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            onSearch={() => { setPage(1); loadData(); }}
+          />
           <Select
             placeholder={t("products.matchStatus")} allowClear style={{ width: 150 }}
             options={[
@@ -193,6 +227,19 @@ export default function Products() {
           </Button>
         </Space>
       </Card>
+
+      {syncing && syncProgress && (
+        <Card style={{ marginBottom: 16 }}>
+          <Progress
+            percent={syncProgress.total ? Math.round(((syncProgress.index ?? 0) / syncProgress.total) * 100) : 30}
+            status="active"
+            format={() => syncProgress.stage === "upserting"
+              ? `${t("products.syncUpserting", { defaultValue: "写入中" })} ${syncProgress.category} (${syncProgress.synced ?? 0})`
+              : `${t("products.syncFetching", { defaultValue: "拉取" })} ${syncProgress.category} (${syncProgress.index}/${syncProgress.total})`}
+          />
+          <span style={{ color: "#8c8c8c", fontSize: 12 }}>{syncProgress.message || syncProgress.stage}</span>
+        </Card>
+      )}
 
       <Table
         dataSource={data}

@@ -60,8 +60,14 @@ def sync_sorftime_daily(
         engine = SelectionEngine(thresholds)
         risk = RiskEngine()
 
-        for cat in cats:
+        total_cats = len(cats)
+        for idx, cat in enumerate(cats, 1):
             try:
+                if hasattr(self, "update_state"):
+                    self.update_state(
+                        state="PROGRESS",
+                        meta={"stage": "fetching", "category": cat, "index": idx, "total": total_cats, "site": current_site, "platform": pf},
+                    )
                 items = _fetch_products(pf, current_site, cat)
                 logger.info("品类拉取完成", category=cat, platform=pf, count=len(items))
 

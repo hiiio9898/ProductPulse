@@ -27,6 +27,7 @@ async def list_products(
     site: str | None = Query(default=None),
     category: str | None = Query(default=None),
     match_status: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
     min_score: float | None = Query(default=None),
     sort_by: str = Query(default="score", pattern="^(score|price|sales)$"),
     sort_order: str = Query(default="desc", pattern="^(asc|desc)$"),
@@ -42,6 +43,8 @@ async def list_products(
         query = query.where(Product.platform == platform)
     if site:
         query = query.where(Product.site == site)
+    if keyword:
+        query = query.where(Product.title.ilike(f"%{keyword}%"))
     if category:
         query = query.where(Product.category == category)
     if match_status:
@@ -155,3 +158,24 @@ async def trigger_sync(
     cats = [category] if category else DEFAULT_CATEGORIES
     task = sync_sorftime_daily.delay(categories=cats, platform=platform, site=site)
     return ok_response(data={"task_id": task.id, "status": "queued", "platform": platform, "site": site})
+
+
+@router.get("/products/sync/status/{task_id}")
+async def sync_status(task_id: str, _: bool = AuthRequired):
+    """查询同步任务进度（基于 Celery AsyncResult）。"""
+    from app.celery_app import celery_app
+
+    result = celery_app.AsyncResult(task_id)
+    state = result.state
+
+    info = {"state": state}
+    if state == "PROGRESS" and isinstance(result.info, dict):
+        info.update(result.info)
+    elif state == "SUCCESS":
+        info.update({"done": True, "result": result.result if isinstance(result.result, dict) else {}})
+    elif state == "FAILURE":
+        info.update({"done": True, "error": str(result.info)})
+    elif state in ("PENDING", "STARTED"):
+        info.update({"message": "排队/运行中"})
+
+    return ok_response(data=info)

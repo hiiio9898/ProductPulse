@@ -20,6 +20,7 @@ export interface ProductListParams {
   platform?: string;
   site?: string;
   category?: string;
+  keyword?: string;
   match_status?: string;
   min_score?: number;
   sort_by?: "score" | "price" | "sales";
@@ -38,6 +39,23 @@ export const getProductDetail = (id: number) =>
 
 export const triggerSync = (params?: { platform?: string; site?: string; category?: string }) =>
   request.post<{ data: { task_id: string; platform: string; site: string } }>("/products/sync", null, { params }).then((r) => r.data.data);
+
+export interface SyncStatus {
+  state: string;
+  stage?: string;
+  category?: string;
+  index?: number;
+  total?: number;
+  fetched?: number;
+  synced?: number;
+  done?: boolean;
+  result?: { synced?: number; errors?: number; auto_matched?: number };
+  error?: string;
+  message?: string;
+}
+
+export const getSyncStatus = (taskId: string) =>
+  request.get<{ data: SyncStatus }>(`/products/sync/status/${taskId}`).then((r) => r.data.data);
 
 export const getWeeklyRecommendations = () =>
   request

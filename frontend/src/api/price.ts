@@ -74,3 +74,22 @@ export const compareProduct = (productId: number, force: boolean = false) =>
   request
     .get<{ data: CompareResult }>(`/price/compare/${productId}`, { params: { force } })
     .then((r) => r.data.data);
+
+export interface TrendPoint {
+  date: string;
+  price_1688: number | null;
+}
+
+export interface MonitoredProduct {
+  product_id: number;
+  title: string;
+  platform: string;
+  price_1688: number | null;
+  price_change_percent: number | null;
+  snapshot_date: string | null;
+  alert: string | null;
+  trend: TrendPoint[];
+}
+
+export const getMonitoredProducts = () =>
+  request.get<{ data: { items: MonitoredProduct[]; total: number } }>("/price/monitored").then((r) => r.data.data);

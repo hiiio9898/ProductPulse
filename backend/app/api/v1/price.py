@@ -212,6 +212,52 @@ async def refresh_all(_: bool = AuthRequired):
 
 # ---------- 预警列表 ----------
 
+@router.get("/price/monitored")
+async def monitored_products(db: Session = Depends(get_db), _: bool = AuthRequired):
+    """获取所有在监产品（已确认关联）+ 最近价格快照 + 价格走势序列。"""
+    products = db.execute(
+        select(Product).where(
+            Product.deleted_at.is_(None),
+            Product.match_status == "confirmed",
+        ).order_by(Product.comprehensive_score.desc().nullslast())
+    ).scalars().all()
+
+    items = []
+    for product in products:
+        # 最新快照
+        latest = db.execute(
+            select(PriceSnapshot)
+            .where(PriceSnapshot.product_id == product.id)
+            .order_by(PriceSnapshot.snapshot_date.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+
+        # 最近 14 天 1688 价格序列（走势）
+        history = db.execute(
+            select(PriceSnapshot)
+            .where(PriceSnapshot.product_id == product.id)
+            .order_by(PriceSnapshot.snapshot_date.asc())
+            .limit(14)
+        ).scalars().all()
+        trend = [
+            {"date": str(s.snapshot_date), "price_1688": float(s.price_1688) if s.price_1688 else None}
+            for s in history
+        ]
+
+        items.append({
+            "product_id": product.id,
+            "title": product.title,
+            "platform": product.platform,
+            "price_1688": float(latest.price_1688) if latest and latest.price_1688 else None,
+            "price_change_percent": float(latest.price_change_percent) if latest and latest.price_change_percent else None,
+            "snapshot_date": str(latest.snapshot_date) if latest else None,
+            "alert": price_compare_service.check_alert(latest.price_change_percent) if latest and latest.price_change_percent else None,
+            "trend": trend,
+        })
+
+    return ok_response({"items": items, "total": len(items)})
+
+
 @router.get("/price/alerts")
 async def price_alerts(db: Session = Depends(get_db), _: bool = AuthRequired):
     """获取当前所有价格预警（变动 >= 5% 的最近快照）。"""
